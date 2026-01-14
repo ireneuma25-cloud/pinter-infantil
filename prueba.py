@@ -25,25 +25,32 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- CONFIGURAR IA ---
+# --- CONFIGURAR IA (Con sistema de emergencia) ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # USAMOS EL NOMBRE MÁS SEGURO DE GOOGLE
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    
+    # Intentamos cargar el modelo de dos formas distintas
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+    except:
+        model = genai.GenerativeModel('gemini-pro') # Modelo de reserva
+        
 except Exception as e:
-    st.error(f"Error de llave: {e}")
+    st.error(f"Error de conexión: {e}")
 
 # --- MENÚ LATERAL ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
     modo = st.radio("Opción:", ["👩‍🏫 Asistente", "📖 Cuentos"])
     st.markdown("---")
-    st.link_button("🚀 Crear Imágenes", "https://www.bing.com/images/create")
+    if st.button("🗑️ Borrar Chat"):
+        st.session_state.chat = []
+        st.rerun()
 
 # --- LÓGICA ---
 if "chat" not in st.session_state: st.session_state.chat = []
 
-st.title("👩‍🏫 Pinter Edu" if modo == "👩‍🏫 Asistente" else "📖 Cuentacuentos")
+st.title("👩‍🏫 Pinter" if modo == "👩‍🏫 Asistente" else "📖 Cuentacuentos")
 
 for m in st.session_state.chat:
     with st.chat_message(m["role"]): st.markdown(m["content"])
@@ -54,13 +61,17 @@ if pregunta:
     with st.chat_message("user"): st.markdown(pregunta)
     with st.chat_message("assistant"):
         try:
-            res = model.generate_content(pregunta)
-            st.markdown(res.text)
-            st.session_state.chat.append({"role": "assistant", "content": res.text})
+            # Forzamos la respuesta
+            response = model.generate_content(pregunta)
+            texto_respuesta = response.text
+            st.markdown(texto_respuesta)
+            st.session_state.chat.append({"role": "assistant", "content": texto_respuesta})
+            
             if modo == "📖 Cuentos":
-                tts = gTTS(text=res.text.replace("*", ""), lang='es')
+                tts = gTTS(text=texto_respuesta.replace("*", ""), lang='es')
                 audio_bytes = io.BytesIO()
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
         except Exception as e:
-            st.error(f"Error 404 corregido, pero algo falló: {e}")
+            st.error("Google está actualizando sus sistemas. Por favor, espera 1 minuto y vuelve a escribir.")
+            st.info(f"Detalle técnico: {e}")
