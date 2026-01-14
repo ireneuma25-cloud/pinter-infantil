@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
+import os
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
@@ -21,15 +22,10 @@ estilo = """
 """
 st.markdown(estilo, unsafe_allow_html=True)
 
-# --- CLAVE DE GOOGLE ---
-import os
-
 # --- BLOQUE DE SEGURIDAD ---
 try:
-    # Intenta coger la clave de la nube
     clave_secreta = st.secrets["GOOGLE_API_KEY"]
 except:
-    # Dejamos esto vacío para que Google no nos bloquee el archivo
     clave_secreta = "CAMBIAME"
 
 genai.configure(api_key=clave_secreta)
@@ -40,7 +36,6 @@ with st.sidebar:
     modo = st.radio("Elige opción:", ["👩‍🏫 Asistente de Aula", "📖 Cuentacuentos (Voz)"])
     st.markdown("---")
     
-    # Botón de Guardar
     st.header("💾 Guardar Chat")
     texto_a_guardar = ""
     nombre_fichero = "chat.txt"
@@ -50,7 +45,6 @@ with st.sidebar:
             role = "PROFE" if m["role"] == "user" else "IA"
             texto_a_guardar += f"{role}: {m['content']}\n\n"
         nombre_fichero = "asistente.txt"
-    
     elif modo == "📖 Cuentacuentos (Voz)" and "chat_cuentos" in st.session_state:
         for m in st.session_state.chat_cuentos:
             role = "PROFE" if m["role"] == "user" else "CUENTO"
@@ -65,10 +59,8 @@ with st.sidebar:
 
 # --- LÓGICA PRINCIPAL ---
 
-# 1. MODO ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
-    
     if "chat_general" not in st.session_state:
         st.session_state.chat_general = []
 
@@ -77,7 +69,6 @@ if modo == "👩‍🏫 Asistente de Aula":
             st.markdown(m["content"])
 
     pregunta = st.chat_input("Escribe aquí tu consulta...")
-    
     if pregunta:
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
         with st.chat_message("user"):
@@ -87,7 +78,8 @@ if modo == "👩‍🏫 Asistente de Aula":
             caja = st.empty()
             caja.write("Pensando...")
             try:
-                modelo = genai.GenerativeModel('gemini-2.5-flash')
+                # CAMBIO AQUÍ: Usamos gemini-1.5-flash para evitar el error de cuota
+                modelo = genai.GenerativeModel('gemini-1.5-flash')
                 historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_general]
                 respuesta = modelo.generate_content(historial)
                 caja.markdown(respuesta.text)
@@ -96,10 +88,8 @@ if modo == "👩‍🏫 Asistente de Aula":
             except Exception as e:
                 caja.error(f"Error: {e}")
 
-# 2. MODO CUENTACUENTOS
 elif modo == "📖 Cuentacuentos (Voz)":
     st.title("📖 La Hora del Cuento")
-    
     if "chat_cuentos" not in st.session_state:
         st.session_state.chat_cuentos = []
 
@@ -108,7 +98,6 @@ elif modo == "📖 Cuentacuentos (Voz)":
             st.markdown(m["content"])
 
     tema = st.chat_input("¿De qué quieres el cuento?")
-    
     if tema:
         st.session_state.chat_cuentos.append({"role": "user", "content": tema})
         with st.chat_message("user"):
@@ -119,7 +108,8 @@ elif modo == "📖 Cuentacuentos (Voz)":
             caja.write("Escribiendo cuento...")
             try:
                 prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
-                modelo = genai.GenerativeModel('gemini-2.5-flash-8b', system_instruction=prompt_sistema)
+                # CAMBIO AQUÍ: gemini-1.5-flash es más estable que el 8b
+                modelo = genai.GenerativeModel('gemini-1.5-flash', system_instruction=prompt_sistema)
                 historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
                 respuesta = modelo.generate_content(historial)
                 
@@ -127,14 +117,10 @@ elif modo == "📖 Cuentacuentos (Voz)":
                 caja.markdown(respuesta.text)
                 st.session_state.chat_cuentos.append({"role": "assistant", "content": respuesta.text})
                 
-                # Audio
                 tts = gTTS(text=texto_limpio, lang='es')
                 audio_bytes = io.BytesIO()
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
-                
                 st.rerun()
             except Exception as e:
-
                 caja.error(f"Error: {e}")
-
