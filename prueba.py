@@ -2,140 +2,126 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
+import os
 
-# --- CONFIGURACIÓN ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- DISEÑO ---
-estilo = """
+# --- 2. SELECTOR DE MODO (En la barra lateral) ---
+with st.sidebar:
+    st.title("🎨 Personalización")
+    tema = st.radio("Elige el modo de lectura:", ["Modo Claro ☀️", "Modo Oscuro 🌙"])
+    st.markdown("---")
+
+# --- 3. LÓGICA DE COLORES ---
+if tema == "Modo Claro ☀️":
+    color_fondo = "#FDFBF7"
+    color_texto = "#4A4A4A"
+    color_sidebar = "#F9F5EB"
+    color_borde = "#F4D03F"
+    color_burbuja = "#FFFFFF"
+else:
+    color_fondo = "#121212"
+    color_texto = "#E0E0E0"
+    color_sidebar = "#1E1E1E"
+    color_borde = "#BB86FC"
+    color_burbuja = "#2D2D2D"
+
+# --- 4. APLICAR ESTILO CSS ---
+estilo = f"""
 <style>
-    html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
-    .stApp {
-        background-color: #FDFBF7;
-        background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
-    }
-    h1 { color: #4A4A4A; border-bottom: 2px solid #F4D03F; padding-bottom: 10px; }
-    .stChatMessage { background-color: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 12px; }
-    section[data-testid="stSidebar"] { background-color: #F9F5EB; border-right: 1px solid #E0DND0; }
+    /* Fondo y texto general */
+    .stApp {{
+        background-color: {color_fondo} !important;
+        color: {color_texto} !important;
+    }}
+    
+    /* Barra lateral */
+    section[data-testid="stSidebar"] {{
+        background-color: {color_sidebar} !important;
+    }}
+
+    /* Títulos y textos */
+    h1, h2, h3, p, span, label {{
+        color: {color_texto} !important;
+        font-family: 'Times New Roman', Times, serif;
+    }}
+
+    /* Burbujas del chat */
+    .stChatMessage {{
+        background-color: {color_burbuja} !important;
+        border: 1px solid {color_borde} !important;
+        color: {color_texto} !important;
+        border-radius: 15px;
+    }}
+
+    /* Línea debajo del título */
+    h1 {{
+        border-bottom: 2px solid {color_borde};
+        padding-bottom: 10px;
+    }}
 </style>
 """
 st.markdown(estilo, unsafe_allow_html=True)
 
-# --- CLAVE DE GOOGLE ---
-import os
-
-# --- BLOQUE DE SEGURIDAD ---
+# --- 5. CLAVE DE GOOGLE (Caja fuerte) ---
 try:
-    # Intenta coger la clave de la nube
     clave_secreta = st.secrets["GOOGLE_API_KEY"]
 except:
-    # Dejamos esto vacío para que Google no nos bloquee el archivo
     clave_secreta = "CAMBIAME"
 
 genai.configure(api_key=clave_secreta)
 
-# --- BARRA LATERAL ---
+# --- 6. BARRA LATERAL (Resto de opciones) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
     modo = st.radio("Elige opción:", ["👩‍🏫 Asistente de Aula", "📖 Cuentacuentos (Voz)"])
     st.markdown("---")
-    
-    # Botón de Guardar
-    st.header("💾 Guardar Chat")
-    texto_a_guardar = ""
-    nombre_fichero = "chat.txt"
-
-    if modo == "👩‍🏫 Asistente de Aula" and "chat_general" in st.session_state:
-        for m in st.session_state.chat_general:
-            role = "PROFE" if m["role"] == "user" else "IA"
-            texto_a_guardar += f"{role}: {m['content']}\n\n"
-        nombre_fichero = "asistente.txt"
-    
-    elif modo == "📖 Cuentacuentos (Voz)" and "chat_cuentos" in st.session_state:
-        for m in st.session_state.chat_cuentos:
-            role = "PROFE" if m["role"] == "user" else "CUENTO"
-            texto_a_guardar += f"{role}: {m['content']}\n\n"
-        nombre_fichero = "cuentos.txt"
-
-    if texto_a_guardar:
-        st.download_button("📥 Descargar .txt", texto_a_guardar, nombre_fichero)
-    
-    st.markdown("---")
     st.link_button("🚀 Crear Imágenes (Bing)", "https://www.bing.com/images/create")
 
-# --- LÓGICA PRINCIPAL ---
+# --- 7. LÓGICA DEL CHAT ---
+if "chat_general" not in st.session_state: st.session_state.chat_general = []
+if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
 
-# 1. MODO ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
-    
-    if "chat_general" not in st.session_state:
-        st.session_state.chat_general = []
-
     for m in st.session_state.chat_general:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
-
-    pregunta = st.chat_input("Escribe aquí tu consulta...")
+        with st.chat_message(m["role"]): st.markdown(m["content"])
     
+    pregunta = st.chat_input("Escribe aquí tu consulta...")
     if pregunta:
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
-        with st.chat_message("user"):
-            st.markdown(pregunta)
-
+        with st.chat_message("user"): st.markdown(pregunta)
         with st.chat_message("assistant"):
             caja = st.empty()
-            caja.write("Pensando...")
             try:
-                modelo = genai.GenerativeModel('gemini-2.5-flash')
-                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_general]
-                respuesta = modelo.generate_content(historial)
-                caja.markdown(respuesta.text)
-                st.session_state.chat_general.append({"role": "assistant", "content": respuesta.text})
-                st.rerun()
-            except Exception as e:
-                caja.error(f"Error: {e}")
+                modelo = genai.GenerativeModel('gemini-1.5-flash-8b')
+                res = modelo.generate_content(pregunta)
+                caja.markdown(res.text)
+                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
+            except Exception as e: caja.error(f"Error: {e}")
 
-# 2. MODO CUENTACUENTOS
 elif modo == "📖 Cuentacuentos (Voz)":
     st.title("📖 La Hora del Cuento")
-    
-    if "chat_cuentos" not in st.session_state:
-        st.session_state.chat_cuentos = []
-
     for m in st.session_state.chat_cuentos:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    tema = st.chat_input("¿De qué quieres el cuento?")
-    
-    if tema:
-        st.session_state.chat_cuentos.append({"role": "user", "content": tema})
-        with st.chat_message("user"):
-            st.markdown(tema)
-
+    tema_cuento = st.chat_input("¿De qué quieres el cuento?")
+    if tema_cuento:
+        st.session_state.chat_cuentos.append({"role": "user", "content": tema_cuento})
+        with st.chat_message("user"): st.markdown(tema_cuento)
         with st.chat_message("assistant"):
             caja = st.empty()
-            caja.write("Escribiendo cuento...")
             try:
-                prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
-                modelo = genai.GenerativeModel('gemini-1.5-flash-8b', system_instruction=prompt_sistema)
-                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
-                respuesta = modelo.generate_content(historial)
+                modelo = genai.GenerativeModel('gemini-1.5-flash-8b')
+                res = modelo.generate_content(f"Eres un cuentacuentos infantil. Escribe un cuento corto sobre {tema_cuento}. Sin negritas ni símbolos.")
+                texto_limpio = res.text.replace("*", "").replace("#", "")
+                caja.markdown(res.text)
+                st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
                 
-                texto_limpio = respuesta.text.replace("*", "").replace("#", "")
-                caja.markdown(respuesta.text)
-                st.session_state.chat_cuentos.append({"role": "assistant", "content": respuesta.text})
-                
-                # Audio
+                # Generar audio
                 tts = gTTS(text=texto_limpio, lang='es')
                 audio_bytes = io.BytesIO()
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
-                
-                st.rerun()
-            except Exception as e:
-
-                caja.error(f"Error: {e}")
-
-
+            except Exception as e: caja.error(f"Error: {e}")
