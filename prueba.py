@@ -29,8 +29,8 @@ try:
     # Intenta coger la clave de la nube
     clave_secreta = st.secrets["GOOGLE_API_KEY"]
 except:
-    # Fíjate que esta línea tiene espacio delante 👇
-    clave_secreta = "AIzaSyBTCkrOGfIsCljVD8nMTTQdPxkwdupirf4"
+    # Dejamos esto vacío para que Google no nos bloquee el archivo
+    clave_secreta = "CAMBIAME"
 
 genai.configure(api_key=clave_secreta)
 
@@ -137,4 +137,5 @@ elif modo == "📖 Cuentacuentos (Voz)":
             except Exception as e:
 
                 caja.error(f"Error: {e}")
+
 
