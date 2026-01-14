@@ -119,7 +119,7 @@ elif modo == "📖 Cuentacuentos (Voz)":
             caja.write("Escribiendo cuento...")
             try:
                 prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
-                modelo = genai.GenerativeModel('gemini-2.5-flash', system_instruction=prompt_sistema)
+                modelo = genai.GenerativeModel('gemini-1.5-flash', system_instruction=prompt_sistema)
                 historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
                 respuesta = modelo.generate_content(historial)
                 
@@ -135,4 +135,5 @@ elif modo == "📖 Cuentacuentos (Voz)":
                 
                 st.rerun()
             except Exception as e:
+
                 caja.error(f"Error: {e}")
