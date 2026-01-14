@@ -7,7 +7,7 @@ import os
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- DISEÑO ---
+# --- DISEÑO (Mantenemos tu estilo exacto) ---
 estilo = """
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
@@ -38,21 +38,19 @@ with st.sidebar:
     
     st.header("💾 Guardar Chat")
     texto_a_guardar = ""
-    nombre_fichero = "chat.txt"
-
+    
+    # Lógica para preparar la descarga del chat
     if modo == "👩‍🏫 Asistente de Aula" and "chat_general" in st.session_state:
         for m in st.session_state.chat_general:
             role = "PROFE" if m["role"] == "user" else "IA"
             texto_a_guardar += f"{role}: {m['content']}\n\n"
-        nombre_fichero = "asistente.txt"
+        st.download_button("📥 Descargar asistente.txt", texto_a_guardar, "asistente.txt")
+        
     elif modo == "📖 Cuentacuentos (Voz)" and "chat_cuentos" in st.session_state:
         for m in st.session_state.chat_cuentos:
             role = "PROFE" if m["role"] == "user" else "CUENTO"
             texto_a_guardar += f"{role}: {m['content']}\n\n"
-        nombre_fichero = "cuentos.txt"
-
-    if texto_a_guardar:
-        st.download_button("📥 Descargar .txt", texto_a_guardar, nombre_fichero)
+        st.download_button("📥 Descargar cuentos.txt", texto_a_guardar, "cuentos.txt")
     
     st.markdown("---")
     st.link_button("🚀 Crear Imágenes (Bing)", "https://www.bing.com/images/create")
@@ -78,10 +76,9 @@ if modo == "👩‍🏫 Asistente de Aula":
             caja = st.empty()
             caja.write("Pensando...")
             try:
-                # CAMBIO AQUÍ: Usamos gemini-1.5-flash para evitar el error de cuota
+                # CORRECCIÓN: Usamos el modelo estable para evitar el Error 404
                 modelo = genai.GenerativeModel('gemini-1.5-flash')
-                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_general]
-                respuesta = modelo.generate_content(historial)
+                respuesta = modelo.generate_content(pregunta)
                 caja.markdown(respuesta.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": respuesta.text})
                 st.rerun()
@@ -107,16 +104,16 @@ elif modo == "📖 Cuentacuentos (Voz)":
             caja = st.empty()
             caja.write("Escribiendo cuento...")
             try:
+                # CORRECCIÓN: Modelo 1.5-flash sin el "-8b" para máxima compatibilidad
                 prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
-                # CAMBIO AQUÍ: gemini-1.5-flash es más estable que el 8b
                 modelo = genai.GenerativeModel('gemini-1.5-flash', system_instruction=prompt_sistema)
-                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
-                respuesta = modelo.generate_content(historial)
+                respuesta = modelo.generate_content(tema)
                 
                 texto_limpio = respuesta.text.replace("*", "").replace("#", "")
                 caja.markdown(respuesta.text)
                 st.session_state.chat_cuentos.append({"role": "assistant", "content": respuesta.text})
                 
+                # Audio
                 tts = gTTS(text=texto_limpio, lang='es')
                 audio_bytes = io.BytesIO()
                 tts.write_to_fp(audio_bytes)
