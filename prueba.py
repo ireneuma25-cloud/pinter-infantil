@@ -2,11 +2,12 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
+import os
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- DISEÑO ---
+# --- DISEÑO (Estilo papel crema) ---
 estilo = """
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
@@ -22,14 +23,9 @@ estilo = """
 st.markdown(estilo, unsafe_allow_html=True)
 
 # --- CLAVE DE GOOGLE ---
-import os
-
-# --- BLOQUE DE SEGURIDAD ---
 try:
-    # Intenta coger la clave de la nube
     clave_secreta = st.secrets["GOOGLE_API_KEY"]
 except:
-    # Dejamos esto vacío para que Google no nos bloquee el archivo
     clave_secreta = "CAMBIAME"
 
 genai.configure(api_key=clave_secreta)
@@ -87,7 +83,8 @@ if modo == "👩‍🏫 Asistente de Aula":
             caja = st.empty()
             caja.write("Pensando...")
             try:
-                modelo = genai.GenerativeModel('gemini-2.5-flash')
+                # CAMBIO CLAVE: Usamos gemini-1.5-flash (1500 usos/día)
+                modelo = genai.GenerativeModel('gemini-1.5-flash')
                 historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_general]
                 respuesta = modelo.generate_content(historial)
                 caja.markdown(respuesta.text)
@@ -119,7 +116,8 @@ elif modo == "📖 Cuentacuentos (Voz)":
             caja.write("Escribiendo cuento...")
             try:
                 prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
-                modelo = genai.GenerativeModel('gemini-1.5-flash-8b', system_instruction=prompt_sistema)
+                # CAMBIO CLAVE: Modelo compatible y sin límite de 20 mensajes
+                modelo = genai.GenerativeModel('gemini-1.5-flash', system_instruction=prompt_sistema)
                 historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
                 respuesta = modelo.generate_content(historial)
                 
@@ -132,8 +130,6 @@ elif modo == "📖 Cuentacuentos (Voz)":
                 audio_bytes = io.BytesIO()
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
-                
                 st.rerun()
             except Exception as e:
-
                 caja.error(f"Error: {e}")
