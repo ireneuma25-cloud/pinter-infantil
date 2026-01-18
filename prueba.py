@@ -17,11 +17,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. CONEXIÓN (MODELO LITE) ---
+# --- 3. CONEXIÓN (EL COMODÍN) ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # CAMBIO CLAVE: Usamos el modelo 'lite' que suele tener cuota gratis
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    # USAMOS EL COMODÍN QUE APARECÍA EN TU LISTA
+    model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
@@ -65,8 +65,7 @@ if modo == "Asistente de Aula":
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e:
-                # Si falla, mostramos el error de forma amable
-                caja.error(f"⏳ La IA está descansando. Espera 30 seg. (Error: {e})")
+                caja.error(f"Error: {e}")
 
 # MODO CUENTACUENTOS
 elif modo == "Cuentacuentos":
@@ -98,4 +97,4 @@ elif modo == "Cuentacuentos":
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
             except Exception as e:
-                caja.error(f"⏳ La IA está descansando. Espera 30 seg. (Error: {e})")
+                caja.
