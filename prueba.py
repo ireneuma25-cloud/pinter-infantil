@@ -2,64 +2,136 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
+import os
 
-# --- 1. CONFIGURACIÓN ---
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. DISEÑO ---
-st.markdown("""
+# --- DISEÑO ---
+estilo = """
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
-    .stApp { background-color: #FDFBF7; background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png"); }
+    .stApp {
+        background-color: #FDFBF7;
+        background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
+    }
     h1 { color: #4A4A4A; border-bottom: 2px solid #F4D03F; padding-bottom: 10px; }
     .stChatMessage { background-color: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 12px; }
     section[data-testid="stSidebar"] { background-color: #F9F5EB; border-right: 1px solid #E0DND0; }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(estilo, unsafe_allow_html=True)
 
-# --- 3. CONEXIÓN (EL COMODÍN) ---
+# --- CLAVE DE GOOGLE (SEGURIDAD) ---
 try:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # Usamos este nombre que salía en tu lista y nunca falla
-    model = genai.GenerativeModel('gemini-flash-latest')
-except Exception as e:
-    st.error(f"Error de conexión: {e}")
+    clave_secreta = st.secrets["GOOGLE_API_KEY"]
+except:
+    # AQUÍ PUEDES PONER TU CLAVE PARA PROBAR EN TU PC SI QUIERES
+    clave_secreta = "TU_CLAVE_AIzaSy..." 
 
-# --- 4. MENÚ LATERAL ---
+genai.configure(api_key=clave_secreta)
+
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    modo = st.radio("Elige opción:", ["Asistente de Aula", "Cuentacuentos"])
+    modo = st.radio("Elige opción:", ["👩‍🏫 Asistente de Aula", "📖 Cuentacuentos (Voz)"])
     st.markdown("---")
     
-    if st.button("💾 Descargar Chat"):
-        texto = ""
-        if "chat_general" in st.session_state:
-            for m in st.session_state.chat_general:
-                texto += f"{m['role']}: {m['content']}\n"
-        elif "chat_cuentos" in st.session_state:
-            for m in st.session_state.chat_cuentos:
-                texto += f"{m['role']}: {m['content']}\n"
-        
-        if texto:
-            st.download_button("📥 Bajar archivo", texto, "pinter.txt")
+    # Botón de Guardar
+    st.header("💾 Guardar Chat")
+    texto_a_guardar = ""
+    nombre_fichero = "chat.txt"
 
-# --- 5. LÓGICA PRINCIPAL ---
+    if modo == "👩‍🏫 Asistente de Aula" and "chat_general" in st.session_state:
+        for m in st.session_state.chat_general:
+            role = "PROFE" if m["role"] == "user" else "IA"
+            texto_a_guardar += f"{role}: {m['content']}\n\n"
+        nombre_fichero = "asistente.txt"
+    
+    elif modo == "📖 Cuentacuentos (Voz)" and "chat_cuentos" in st.session_state:
+        for m in st.session_state.chat_cuentos:
+            role = "PROFE" if m["role"] == "user" else "CUENTO"
+            texto_a_guardar += f"{role}: {m['content']}\n\n"
+        nombre_fichero = "cuentos.txt"
 
-# MODO ASISTENTE
-if modo == "Asistente de Aula":
+    if texto_a_guardar:
+        st.download_button("📥 Descargar .txt", texto_a_guardar, nombre_fichero)
+    
+    st.markdown("---")
+    st.link_button("🚀 Crear Imágenes (Bing)", "https://www.bing.com/images/create")
+
+# --- LÓGICA PRINCIPAL ---
+
+# 1. MODO ASISTENTE
+if modo == "👩‍🏫 Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
     
-    if "chat_general" not in st.session_state: st.session_state.chat_general = []
-    
-    for m in st.session_state.chat_general:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+    if "chat_general" not in st.session_state:
+        st.session_state.chat_general = []
 
-    if pregunta := st.chat_input("Escribe aquí tu consulta..."):
+    for m in st.session_state.chat_general:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    pregunta = st.chat_input("Escribe aquí tu consulta...")
+    
+    if pregunta:
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
-        with st.chat_message("user"): st.markdown(pregunta)
-        
+        with st.chat_message("user"):
+            st.markdown(pregunta)
+
         with st.chat_message("assistant"):
             caja = st.empty()
+            caja.write("Pensando...")
             try:
-                res = model.generate_content(pregunta)
-                caja.markdown(res.
+                # MODELO CAMBIADO A 1.5 (MÁS CAPACIDAD)
+                modelo = genai.GenerativeModel('gemini-1.5-flash')
+                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_general]
+                respuesta = modelo.generate_content(historial)
+                caja.markdown(respuesta.text)
+                st.session_state.chat_general.append({"role": "assistant", "content": respuesta.text})
+                st.rerun()
+            except Exception as e:
+                caja.error(f"Error: {e}")
+
+# 2. MODO CUENTACUENTOS
+elif modo == "📖 Cuentacuentos (Voz)":
+    st.title("📖 La Hora del Cuento")
+    
+    if "chat_cuentos" not in st.session_state:
+        st.session_state.chat_cuentos = []
+
+    for m in st.session_state.chat_cuentos:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    tema = st.chat_input("¿De qué quieres el cuento?")
+    
+    if tema:
+        st.session_state.chat_cuentos.append({"role": "user", "content": tema})
+        with st.chat_message("user"):
+            st.markdown(tema)
+
+        with st.chat_message("assistant"):
+            caja = st.empty()
+            caja.write("Escribiendo cuento...")
+            try:
+                prompt_sistema = "Eres un narrador para niños. Escribe texto plano, frases cortas, sin negritas."
+                # MODELO CAMBIADO A 1.5 (MÁS CAPACIDAD)
+                modelo = genai.GenerativeModel('gemini-1.5-flash', system_instruction=prompt_sistema)
+                historial = [{"role": ("user" if m["role"]=="user" else "model"), "parts": [m["content"]]} for m in st.session_state.chat_cuentos]
+                respuesta = modelo.generate_content(historial)
+                
+                texto_limpio = respuesta.text.replace("*", "").replace("#", "")
+                caja.markdown(respuesta.text)
+                st.session_state.chat_cuentos.append({"role": "assistant", "content": respuesta.text})
+                
+                # Audio
+                tts = gTTS(text=texto_limpio, lang='es')
+                audio_bytes = io.BytesIO()
+                tts.write_to_fp(audio_bytes)
+                st.audio(audio_bytes, format='audio/mp3')
+                
+                st.rerun()
+            except Exception as e:
+                caja.error(f"Error: {e}")
