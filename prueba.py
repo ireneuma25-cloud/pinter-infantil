@@ -17,11 +17,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. CONEXIÓN (MODELO 2.0 FLASH) ---
+# --- 3. CONEXIÓN (MODELO LITE) ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # Usamos el modelo que vimos en tu lista
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    # CAMBIO CLAVE: Usamos el modelo 'lite' que suele tener cuota gratis
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
@@ -31,7 +31,6 @@ with st.sidebar:
     modo = st.radio("Elige opción:", ["Asistente de Aula", "Cuentacuentos"])
     st.markdown("---")
     
-    # Lógica de descarga simplificada
     if st.button("💾 Descargar Chat"):
         texto = ""
         if "chat_general" in st.session_state:
@@ -42,9 +41,7 @@ with st.sidebar:
                 texto += f"{m['role']}: {m['content']}\n"
         
         if texto:
-            st.download_button("📥 Click para bajar archivo", texto, "pinter.txt")
-        else:
-            st.warning("El chat está vacío.")
+            st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
 # --- 5. LÓGICA PRINCIPAL ---
 
@@ -52,20 +49,14 @@ with st.sidebar:
 if modo == "Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
     
-    # Inicializar historial
-    if "chat_general" not in st.session_state:
-        st.session_state.chat_general = []
+    if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
-    # Mostrar historial
     for m in st.session_state.chat_general:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # Caja de entrada
     if pregunta := st.chat_input("Escribe aquí tu consulta..."):
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
-        with st.chat_message("user"):
-            st.markdown(pregunta)
+        with st.chat_message("user"): st.markdown(pregunta)
         
         with st.chat_message("assistant"):
             caja = st.empty()
@@ -74,23 +65,21 @@ if modo == "Asistente de Aula":
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e:
-                caja.error(f"Error: {e}")
+                # Si falla, mostramos el error de forma amable
+                caja.error(f"⏳ La IA está descansando. Espera 30 seg. (Error: {e})")
 
 # MODO CUENTACUENTOS
 elif modo == "Cuentacuentos":
     st.title("📖 La Hora del Cuento")
     
-    if "chat_cuentos" not in st.session_state:
-        st.session_state.chat_cuentos = []
+    if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
 
     for m in st.session_state.chat_cuentos:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
     if tema := st.chat_input("¿De qué quieres el cuento?"):
         st.session_state.chat_cuentos.append({"role": "user", "content": tema})
-        with st.chat_message("user"):
-            st.markdown(tema)
+        with st.chat_message("user"): st.markdown(tema)
         
         with st.chat_message("assistant"):
             caja = st.empty()
@@ -109,4 +98,4 @@ elif modo == "Cuentacuentos":
                 tts.write_to_fp(audio_bytes)
                 st.audio(audio_bytes, format='audio/mp3')
             except Exception as e:
-                caja.error(f"Error: {e}")
+                caja.error(f"⏳ La IA está descansando. Espera 30 seg. (Error: {e})")
