@@ -2,7 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
-import os
+
+# --- PEGA ESTO AQUÍ (EL CHIVATO) ---
+st.write(f"VERSIÓN DETECTADA: {genai.__version__}")
+# -----------------------------------
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
@@ -133,3 +136,4 @@ elif modo == "📖 Cuentacuentos (Voz)":
                 st.rerun()
             except Exception as e:
                 caja.error(f"Error: {e}")
+
