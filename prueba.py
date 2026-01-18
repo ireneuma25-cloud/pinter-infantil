@@ -3,10 +3,10 @@ import google.generativeai as genai
 from gtts import gTTS
 import io
 
-# --- CONFIGURACIÓN ---
+# --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- DISEÑO ---
+# --- 2. DISEÑO ---
 st.markdown("""
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
@@ -17,32 +17,96 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- CONEXIÓN ---
+# --- 3. CONEXIÓN (MODELO 2.0 FLASH) ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # ¡AQUÍ ESTÁ LA SOLUCIÓN! Usamos el modelo que SÍ tienes en tu lista
+    # Usamos el modelo que vimos en tu lista
     model = genai.GenerativeModel('gemini-2.0-flash')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- MENÚ LATERAL ---
+# --- 4. MENÚ LATERAL ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    modo = st.radio("Elige opción:", ["👩‍🏫 Asistente de Aula", "📖 Cuentacuentos (Voz)"])
+    modo = st.radio("Elige opción:", ["Asistente de Aula", "Cuentacuentos"])
     st.markdown("---")
     
-    # Botón de descarga
-    texto_a_guardar = ""
-    if modo == "👩‍🏫 Asistente de Aula" and "chat_general" in st.session_state:
-        for m in st.session_state.chat_general:
-            role = "PROFE" if m["role"] == "user" else "IA"
-            texto_a_guardar += f"{role}: {m['content']}\n\n"
-        st.download_button("📥 Descargar Chat", texto_a_guardar, "clase.txt")
+    # Lógica de descarga simplificada
+    if st.button("💾 Descargar Chat"):
+        texto = ""
+        if "chat_general" in st.session_state:
+            for m in st.session_state.chat_general:
+                texto += f"{m['role']}: {m['content']}\n"
+        elif "chat_cuentos" in st.session_state:
+            for m in st.session_state.chat_cuentos:
+                texto += f"{m['role']}: {m['content']}\n"
+        
+        if texto:
+            st.download_button("📥 Click para bajar archivo", texto, "pinter.txt")
+        else:
+            st.warning("El chat está vacío.")
 
-# --- LÓGICA DEL CHAT ---
-if modo == "👩‍🏫 Asistente de Aula":
+# --- 5. LÓGICA PRINCIPAL ---
+
+# MODO ASISTENTE
+if modo == "Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
-    if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
+    # Inicializar historial
+    if "chat_general" not in st.session_state:
+        st.session_state.chat_general = []
+    
+    # Mostrar historial
     for m in st.session_state.chat_general:
-        with
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    # Caja de entrada
+    if pregunta := st.chat_input("Escribe aquí tu consulta..."):
+        st.session_state.chat_general.append({"role": "user", "content": pregunta})
+        with st.chat_message("user"):
+            st.markdown(pregunta)
+        
+        with st.chat_message("assistant"):
+            caja = st.empty()
+            try:
+                res = model.generate_content(pregunta)
+                caja.markdown(res.text)
+                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
+            except Exception as e:
+                caja.error(f"Error: {e}")
+
+# MODO CUENTACUENTOS
+elif modo == "Cuentacuentos":
+    st.title("📖 La Hora del Cuento")
+    
+    if "chat_cuentos" not in st.session_state:
+        st.session_state.chat_cuentos = []
+
+    for m in st.session_state.chat_cuentos:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    if tema := st.chat_input("¿De qué quieres el cuento?"):
+        st.session_state.chat_cuentos.append({"role": "user", "content": tema})
+        with st.chat_message("user"):
+            st.markdown(tema)
+        
+        with st.chat_message("assistant"):
+            caja = st.empty()
+            caja.write("✨ Escribiendo historia...")
+            try:
+                prompt = f"Cuento infantil corto sobre: {tema}."
+                res = model.generate_content(prompt)
+                
+                caja.markdown(res.text)
+                st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
+                
+                # Audio
+                texto_limpio = res.text.replace("*", "").replace("#", "")
+                tts = gTTS(text=texto_limpio, lang='es')
+                audio_bytes = io.BytesIO()
+                tts.write_to_fp(audio_bytes)
+                st.audio(audio_bytes, format='audio/mp3')
+            except Exception as e:
+                caja.error(f"Error: {e}")
