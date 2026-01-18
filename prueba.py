@@ -3,14 +3,16 @@ import google.generativeai as genai
 from gtts import gTTS
 import io
 
-# --- PEGA ESTO AQUÍ (EL CHIVATO) ---
-st.write(f"VERSIÓN DETECTADA: {genai.__version__}")
-# -----------------------------------
-
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- DISEÑO (Estilo papel crema) ---
+# --- 🕵️‍♀️ EL CHIVATO (ESTO ES LO IMPORTANTE) ---
+version = genai.__version__
+st.warning(f"📢 VERSIÓN INSTALADA: {version}")
+st.write("Si el número es menor a 0.8.0, ese es el problema.")
+# -----------------------------------------------
+
+# --- DISEÑO ---
 estilo = """
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
@@ -136,4 +138,5 @@ elif modo == "📖 Cuentacuentos (Voz)":
                 st.rerun()
             except Exception as e:
                 caja.error(f"Error: {e}")
+
 
