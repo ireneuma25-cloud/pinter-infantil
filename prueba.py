@@ -1,9 +1,19 @@
+¡Oído cocina! 👨‍🍳 Cambios anotados:
+
+Texto del Guardado: He cambiado el mensaje para que quede claro que hay que guardar SIEMPRE antes de cerrar, no solo los viernes.
+
+Orden del Menú: He movido al Asistente al primer puesto, para que sea lo primero que veas al entrar.
+
+Aquí tienes el código actualizado. Como siempre: Borra todo lo que haya en prueba.py y pega esto nuevo.
+
+Python
+
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
 import random
-import json # <--- Necesario para guardar los datos
+import json
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
@@ -16,8 +26,6 @@ st.markdown("""
     h1 { color: #4A4A4A; border-bottom: 2px solid #F4D03F; padding-bottom: 10px; }
     .stChatMessage { background-color: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 12px; }
     section[data-testid="stSidebar"] { background-color: #F9F5EB; border-right: 1px solid #E0DND0; }
-    
-    /* Estilo Medallero */
     .stMetric { background-color: #FFF; padding: 10px; border-radius: 10px; border: 1px solid #DDD; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
@@ -32,7 +40,15 @@ except Exception as e:
 # --- 4. MENÚ LATERAL ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    modo = st.radio("Elige opción:", ["⭐ Medallero Semanal", "📝 Asamblea y Lista", "👩‍🏫 Asistente de Aula", "📖 Cuentacuentos"])
+    
+    # CAMBIO 1: El Asistente ahora es el primero de la lista
+    modo = st.radio("Elige opción:", [
+        "👩‍🏫 Asistente de Aula", 
+        "⭐ Medallero Semanal", 
+        "📝 Asamblea y Lista", 
+        "📖 Cuentacuentos"
+    ])
+    
     st.markdown("---")
     
     if st.button("💾 Descargar Chat"):
@@ -47,27 +63,45 @@ with st.sidebar:
 # --- 5. LÓGICA PRINCIPAL ---
 
 # ==========================================
-# MODO: MEDALLERO (NUEVO)
+# MODO 1: ASISTENTE (AHORA ES EL PRIMERO)
 # ==========================================
-if modo == "⭐ Medallero Semanal":
-    st.title("⭐ Medallero de la Clase")
-    st.info("Usa este panel para premiar el buen comportamiento.")
+if modo == "👩‍🏫 Asistente de Aula":
+    st.title("👩‍🏫 Asistente General")
+    if "chat_general" not in st.session_state: st.session_state.chat_general = []
+    
+    for m in st.session_state.chat_general:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # 1. Configuración de alumnos para el medallero
+    if pregunta := st.chat_input("Consulta..."):
+        st.session_state.chat_general.append({"role": "user", "content": pregunta})
+        with st.chat_message("user"): st.markdown(pregunta)
+        with st.chat_message("assistant"):
+            caja = st.empty()
+            try:
+                res = model.generate_content(pregunta)
+                caja.markdown(res.text)
+                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
+            except Exception as e: caja.error(f"Error: {e}")
+
+# ==========================================
+# MODO 2: MEDALLERO
+# ==========================================
+elif modo == "⭐ Medallero Semanal":
+    st.title("⭐ Medallero de la Clase")
+    st.info("Sistema de puntos y recompensas.")
+
     if "puntos_alumnos" not in st.session_state:
-        # Iniciamos con 0 puntos
         nombres = ["Lucas", "Sofía", "Mateo", "Valentina", "Hugo", "Martín"]
         st.session_state.puntos_alumnos = {nombre: 0 for nombre in nombres}
 
-    # 2. Sistema de Guardado / Cargado (EL TRUCO)
-    with st.expander("💾 GUARDAR / CARGAR PUNTOS (Haz esto el viernes)", expanded=False):
+    # CAMBIO 2: Texto actualizado para recordar guardar siempre
+    with st.expander("💾 GUARDAR / CARGAR PUNTOS (Haz esto SIEMPRE antes de cerrar)", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Para GUARDAR:**")
-            # Convertimos los puntos a texto
             codigo_guardado = json.dumps(st.session_state.puntos_alumnos)
             st.code(codigo_guardado, language="json")
-            st.caption("Copia este código y guárdalo en tus notas.")
+            st.caption("⚠️ Copia esto antes de cerrar la pestaña.")
         
         with c2:
             st.markdown("**Para CARGAR:**")
@@ -81,36 +115,27 @@ if modo == "⭐ Medallero Semanal":
                     st.error("El código no es válido.")
 
     st.markdown("---")
-
-    # 3. Panel de Estrellas
     cols = st.columns(3)
     idx = 0
-    
     for nombre, estrellas in st.session_state.puntos_alumnos.items():
         with cols[idx % 3]:
             st.subheader(f"👤 {nombre}")
-            
-            # Mostramos las estrellas visualmente
             st.markdown(f"### {'⭐' * estrellas}")
-            if estrellas == 0:
-                st.caption("Sin estrellas aún")
+            if estrellas == 0: st.caption("Sin estrellas")
             
-            # Botones
             b1, b2 = st.columns(2)
             if b1.button(f"➕", key=f"mas_{nombre}"):
                 st.session_state.puntos_alumnos[nombre] += 1
                 st.rerun()
-            
             if b2.button(f"➖", key=f"menos_{nombre}"):
                 if st.session_state.puntos_alumnos[nombre] > 0:
                     st.session_state.puntos_alumnos[nombre] -= 1
                     st.rerun()
-            
             st.markdown("---")
         idx += 1
 
 # ==========================================
-# MODO: ASAMBLEA
+# MODO 3: ASAMBLEA
 # ==========================================
 elif modo == "📝 Asamblea y Lista":
     st.title("📝 Control de Asamblea")
@@ -139,28 +164,7 @@ elif modo == "📝 Asamblea y Lista":
             st.success(f"## ¡El encargado es: {elegido}! 👑")
 
 # ==========================================
-# MODO: ASISTENTE
-# ==========================================
-elif modo == "👩‍🏫 Asistente de Aula":
-    st.title("👩‍🏫 Asistente General")
-    if "chat_general" not in st.session_state: st.session_state.chat_general = []
-    
-    for m in st.session_state.chat_general:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if pregunta := st.chat_input("Consulta..."):
-        st.session_state.chat_general.append({"role": "user", "content": pregunta})
-        with st.chat_message("user"): st.markdown(pregunta)
-        with st.chat_message("assistant"):
-            caja = st.empty()
-            try:
-                res = model.generate_content(pregunta)
-                caja.markdown(res.text)
-                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
-            except Exception as e: caja.error(f"Error: {e}")
-
-# ==========================================
-# MODO: CUENTACUENTOS
+# MODO 4: CUENTACUENTOS
 # ==========================================
 elif modo == "📖 Cuentacuentos":
     st.title("📖 La Hora del Cuento")
