@@ -8,43 +8,65 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (CLARO / CHOCOLATE) ---
+# --- 2. GESTIÓN DEL TEMA (ANIMADO) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate", "✨ Nebulosa Animada"], horizontal=True)
     st.markdown("---")
 
-# Definir colores
+# Definir variables de colores según el tema
 if tema == "🌞 Claro":
-    # TEMA CLARO (Papel crema)
-    c_fondo = "#FDFBF7"
+    # TEMA CLARO
+    css_fondo = 'background-color: #FDFBF7; background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");'
     c_texto = "#4A4A4A"
     c_sidebar = "#F9F5EB"
-    c_caja = "#FFFFFF"
+    c_caja = "#FFFFFF" # Opaco
     c_borde = "#F0F0F0"
-    img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
-else:
-    # TEMA OSCURO (Marrón Chocolate Profundo)
-    c_fondo = "#1E1611"       # Café muy oscuro (casi negro pero cálido)
-    c_texto = "#E6DCCF"       # Crema suave (se lee genial sobre marrón)
-    c_sidebar = "#2B2118"     # Marrón un poco más claro para el menú
-    c_caja = "#362920"        # Madera oscura para las cajas
-    c_borde = "#4A3B32"       # Bordes color cacao
-    img_fondo = 'none'
 
-# Aplicar estilos CSS
+elif tema == "🐻 Chocolate":
+    # TEMA CHOCOLATE
+    css_fondo = 'background-color: #1E1611;'
+    c_texto = "#E6DCCF"
+    c_sidebar = "#2B2118"
+    c_caja = "#362920" # Opaco
+    c_borde = "#4A3B32"
+
+else:
+    # TEMA NEBULOSA ANIMADA (El nuevo)
+    # Esto crea un degradado que se mueve
+    css_fondo = """
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+    """
+    c_texto = "#FFFFFF"
+    c_sidebar = "rgba(255, 255, 255, 0.1)" # Transparente
+    c_caja = "rgba(255, 255, 255, 0.2)"    # Efecto cristal (se ve el fondo)
+    c_borde = "rgba(255, 255, 255, 0.3)"
+
+# Inyectamos el CSS con la animación
 st.markdown(f"""
 <style>
+    /* Animación para la Nebulosa */
+    @keyframes gradient {{
+        0% {{background-position: 0% 50%;}}
+        50% {{background-position: 100% 50%;}}
+        100% {{background-position: 0% 50%;}}
+    }}
+
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
-    .stApp {{ background-color: {c_fondo}; background-image: {img_fondo}; }}
+    
+    /* Aplicamos el fondo elegido */
+    .stApp {{ {css_fondo} }}
+    
     h1, h2, h3 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
     
-    /* Cajas de chat y elementos */
-    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
-    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; }}
+    /* Cajas de chat y elementos con posible transparencia */
+    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; backdrop-filter: blur(5px); }}
+    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; backdrop-filter: blur(10px); }}
     .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; border: 1px solid {c_borde}; }}
     
-    /* Inputs (donde escribes) */
+    /* Inputs */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ color: {c_texto}; background-color: {c_caja}; border: 1px solid {c_borde}; }}
     p {{ color: {c_texto}; }}
 </style>
@@ -194,4 +216,3 @@ elif modo == "📖 Cuentacuentos":
                 tts.write_to_fp(bio)
                 st.audio(bio, format='audio/mp3')
             except Exception as e: caja.error(f"Error: {e}")
-
