@@ -4,44 +4,36 @@ from gtts import gTTS
 import io
 import random
 import json
-import os 
+import os
+import base64 # <--- Necesario para el truco de la imagen segura
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. CSS "MODO FANTASMA" (SOLUCIÓN DEFINITIVA) ---
-st.markdown("""
-<style>
-    /* 1. ESTO ES LA CLAVE: 
-       Hacemos que el contenedor entero de la imagen sea invisible al ratón.
-       Si el ratón no lo "toca", el botón de ampliar nunca sale. */
-    [data-testid="stImage"] {
-        pointer-events: none !important;
-    }
-
-    /* 2. Por si acaso, ocultamos cualquier botón dentro de ese contenedor */
-    [data-testid="stImage"] button {
-        display: none !important;
-        opacity: 0 !important;
-    }
-    
-    /* 3. Quitamos bordes y sombras al pasar el ratón */
-    [data-testid="stImage"]:hover {
-        box-shadow: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE (HTML PURO) ---
+def imagen_segura(ruta_imagen, ancho_px):
+    """
+    Esta función lee la imagen y la convierte en código HTML puro.
+    Al no usar st.image, Streamlit NO puede ponerle botones de ampliar.
+    """
+    if os.path.exists(ruta_imagen):
+        with open(ruta_imagen, "rb") as img_file:
+            b64_string = base64.b64encode(img_file.read()).decode()
+        
+        # Inyectamos el HTML directo con estilos para que no se pueda arrastrar
+        st.markdown(
+            f'<img src="data:image/png;base64,{b64_string}" '
+            f'style="width:{ancho_px}px; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin: auto;">',
+            unsafe_allow_html=True
+        )
+    else:
+        st.warning(f"⚠️ Falta {ruta_imagen}")
 
 # --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
     # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
-    if os.path.exists("logo1.png"):
-        c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
-        with c2:
-            st.image("logo1.png", use_column_width=True) 
-    else:
-        st.warning("⚠️ Sube 'logo1.png'")
-        st.markdown("---")
+    # Usamos la nueva función segura con ancho 180px
+    imagen_segura("logo1.png", 180)
     
     st.write("") 
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
@@ -75,7 +67,7 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectamos el CSS de diseño
+# Inyectamos el CSS de diseño general
 st.markdown(f"""
 <style>
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
@@ -94,11 +86,11 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. LOGO ESQUINA SUPERIOR DERECHA ---
+# --- 4. LOGO ESQUINA SUPERIOR DERECHA (Con la nueva función segura) ---
 c_main, c_corner_logo = st.columns([0.8, 0.2]) 
 with c_corner_logo:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=160)
+    # Usamos la función segura con ancho 160px
+    imagen_segura("logo.png", 160)
 
 # --- 5. CONEXIÓN ---
 try:
