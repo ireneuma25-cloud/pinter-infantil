@@ -5,41 +5,31 @@ import io
 import random
 import json
 import os
-import base64 # <--- Necesario para el truco de la imagen segura
+import base64 
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE (HTML PURO) ---
+# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE ---
 def imagen_segura(ruta_imagen, ancho_px):
-    """
-    Esta función lee la imagen y la convierte en código HTML puro.
-    Al no usar st.image, Streamlit NO puede ponerle botones de ampliar.
-    """
     if os.path.exists(ruta_imagen):
         with open(ruta_imagen, "rb") as img_file:
             b64_string = base64.b64encode(img_file.read()).decode()
-        
-        # Inyectamos el HTML directo con estilos para que no se pueda arrastrar
         st.markdown(
             f'<img src="data:image/png;base64,{b64_string}" '
-            f'style="width:{ancho_px}px; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin: auto;">',
+            f'style="width:{ancho_px}px; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin-left: auto;">',
             unsafe_allow_html=True
         )
-    else:
-        st.warning(f"⚠️ Falta {ruta_imagen}")
 
 # --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
-    # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
-    # Usamos la nueva función segura con ancho 180px
+    # Logo del Menú (logo1.png)
     imagen_segura("logo1.png", 180)
-    
     st.write("") 
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
-# Lógica de Colores (DISEÑO ALTO CONTRASTE)
+# Lógica de Colores
 if tema == "🌞 Claro":
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
@@ -67,39 +57,54 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectamos el CSS de diseño general
+# CSS GENERAL (AQUÍ ESTÁ EL TRUCO PARA SUBIRLO TODO)
 st.markdown(f"""
 <style>
+    /* Reduce el espacio vacío de arriba del todo */
+    .block-container {{
+        padding-top: 2rem !important; 
+    }}
+
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
+    
+    /* Menú */
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }}
-    section[data-testid="stSidebar"] .stRadio label, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div, section[data-testid="stSidebar"] h1 {{ color: {c_sidebar_text} !important; }}
+    section[data-testid="stSidebar"] .stRadio label, section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div, 
+    section[data-testid="stSidebar"] h1 {{ color: {c_sidebar_text} !important; }}
     button[kind="header"], span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
-    h1, h2, h3, h4 {{ color: {c_text_main} !important; border-bottom: 2px solid #F4D03F; }}
-    label, p, .stMarkdown {{ color: {c_text_main} !important; }}
+    
+    /* Títulos alineados */
+    h1 {{ 
+        color: {c_text_main} !important; 
+        border-bottom: 2px solid #F4D03F; 
+        margin-top: 0px !important;
+        padding-top: 10px !important;
+    }}
+    
+    h2, h3, h4, label, p, .stMarkdown {{ color: {c_text_main} !important; }}
+    
+    /* Inputs y Botones */
     input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }}
     ::placeholder {{ color: {c_placeholder} !important; opacity: 1 !important; }}
     .stButton > button {{ background-color: {c_btn_bg} !important; color: {c_btn_text} !important; border: 1px solid {c_text_main} !important; font-weight: bold !important; }}
     .stButton > button:hover {{ filter: brightness(115%); transform: scale(1.02); }}
+    
+    /* Cajas */
     .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; border-radius: 12px; }}
     .stMetric, .stCheckbox {{ background-color: {c_caja_chat}; color: {c_text_main}; padding: 10px; border-radius: 10px; border: 1px solid {c_border}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. LOGO ESQUINA SUPERIOR DERECHA (Con la nueva función segura) ---
-c_main, c_corner_logo = st.columns([0.8, 0.2]) 
-with c_corner_logo:
-    # Usamos la función segura con ancho 160px
-    imagen_segura("logo.png", 160)
-
-# --- 5. CONEXIÓN ---
+# --- 4. CONEXIÓN ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 6. MENÚ LATERAL ---
+# --- 5. MENÚ LATERAL (CON EMOJIS) ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -110,7 +115,6 @@ with st.sidebar:
     ])
     
     st.markdown("---")
-    
     if st.button("💾 Descargar Chat"):
         texto = ""
         if "chat_general" in st.session_state:
@@ -119,11 +123,26 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
+# --- 6. FUNCIÓN PARA EL ENCABEZADO (ALINEAR TÍTULO Y LOGO) ---
+def crear_encabezado(titulo_texto):
+    # Creamos dos columnas: Izquierda (Título) y Derecha (Logo)
+    # Align="bottom" intenta que el texto y la imagen se alineen abajo
+    c_titulo, c_logo = st.columns([8, 1.5], gap="medium")
+    
+    with c_titulo:
+        # Título SIN emoji
+        st.title(titulo_texto)
+        
+    with c_logo:
+        # Logo seguro (logo.png)
+        imagen_segura("logo.png", 100) # Tamaño 100 para que quede elegante
+
 # --- 7. LÓGICA PRINCIPAL ---
 
 # MODO 1: ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
-    st.title("👩‍🏫 Asistente General")
+    crear_encabezado("Asistente General") # Título limpio
+    
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
     for m in st.session_state.chat_general:
@@ -140,35 +159,25 @@ if modo == "👩‍🏫 Asistente de Aula":
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e: caja.error(f"Error: {e}")
 
-# MODO 2: REDACTOR DE INFORMES
+# MODO 2: REDACTOR
 elif modo == "✍️ Redactor de Informes":
-    st.title("✍️ Redactor Mágico de Notas")
+    crear_encabezado("Redactor Mágico de Notas") # Título limpio
     st.info("Convierte tus notas rápidas en textos profesionales.")
     
     col1, col2 = st.columns(2)
-    
     with col1:
-        nombre_alumno = st.text_input("Nombre del alumno/a:", placeholder="Ej: Lucas (Escribe aquí)")
-        puntos_clave = st.text_area("Puntos clave:", 
-                                   placeholder="Ej: come bien, pega a los compañeros, sabe los colores...",
-                                   height=150)
-        
-        tono = st.select_slider("Tono del mensaje:", options=["Muy Formal", "Cercano y Amable", "Muy Cariñoso"], value="Cercano y Amable")
+        nombre_alumno = st.text_input("Nombre del alumno/a:", placeholder="Ej: Lucas")
+        puntos_clave = st.text_area("Puntos clave:", placeholder="Ej: come bien, pega...", height=150)
+        tono = st.select_slider("Tono:", options=["Muy Formal", "Cercano", "Muy Cariñoso"], value="Cercano")
         
         st.write("")
         if st.button("✨ Generar Informe"):
             if nombre_alumno and puntos_clave:
-                prompt_informe = f"""
-                Actúa como una maestra experta. Redacta un mensaje para los padres de {nombre_alumno}.
-                Tono: {tono}.
-                Puntos a tratar: {puntos_clave}.
-                """
+                prompt = f"Actúa como maestra. Redacta mensaje para padres de {nombre_alumno}. Tono: {tono}. Puntos: {puntos_clave}."
                 try:
-                    res_informe = model.generate_content(prompt_informe)
-                    st.session_state.resultado_informe = res_informe.text
+                    res = model.generate_content(prompt)
+                    st.session_state.resultado_informe = res.text
                 except Exception as e: st.error(f"Error: {e}")
-            else:
-                st.warning("Escribe el nombre y los puntos clave.")
 
     with col2:
         st.subheader("📝 Resultado:")
@@ -177,28 +186,24 @@ elif modo == "✍️ Redactor de Informes":
 
 # MODO 3: MEDALLERO
 elif modo == "⭐ Medallero Semanal":
-    st.title("⭐ Medallero de la Clase")
-    st.info("Sistema de puntos.")
-
+    crear_encabezado("Medallero de la Clase") # Título limpio
+    
     if "puntos_alumnos" not in st.session_state:
         nombres = ["Lucas", "Sofía", "Mateo", "Valentina", "Hugo", "Martín"]
         st.session_state.puntos_alumnos = {nombre: 0 for nombre in nombres}
 
-    with st.expander("💾 GUARDAR / CARGAR (Haz esto SIEMPRE antes de cerrar)", expanded=False):
+    # Sección de Guardado
+    with st.expander("💾 GUARDAR / CARGAR", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**GUARDAR:**")
             st.code(json.dumps(st.session_state.puntos_alumnos), language="json")
-            st.caption("⚠️ Copia el código antes de salir.")
         with c2:
-            st.markdown("**CARGAR:**")
             codigo_carga = st.text_input("Pega código aquí:")
             if st.button("🔄 Recuperar"):
                 try:
                     st.session_state.puntos_alumnos = json.loads(codigo_carga)
-                    st.success("¡Recuperado!")
                     st.rerun()
-                except: st.error("Código inválido.")
+                except: st.error("Error")
 
     st.markdown("---")
     cols = st.columns(3)
@@ -208,10 +213,10 @@ elif modo == "⭐ Medallero Semanal":
             st.subheader(f"👤 {nombre}")
             st.markdown(f"### {'⭐' * estrellas}")
             b1, b2 = st.columns(2)
-            if b1.button("➕", key=f"mas_{nombre}"):
+            if b1.button("➕", key=f"m_{nombre}"):
                 st.session_state.puntos_alumnos[nombre] += 1
                 st.rerun()
-            if b2.button("➖", key=f"menos_{nombre}"):
+            if b2.button("➖", key=f"r_{nombre}"):
                 if st.session_state.puntos_alumnos[nombre] > 0:
                     st.session_state.puntos_alumnos[nombre] -= 1
                     st.rerun()
@@ -220,7 +225,8 @@ elif modo == "⭐ Medallero Semanal":
 
 # MODO 4: ASAMBLEA
 elif modo == "📝 Asamblea y Lista":
-    st.title("📝 Control de Asamblea")
+    crear_encabezado("Control de Asamblea") # Título limpio
+    
     col1, col2 = st.columns([1, 2])
     with col1:
         st.subheader("📋 Configurar Clase")
@@ -246,7 +252,8 @@ elif modo == "📝 Asamblea y Lista":
 
 # MODO 5: CUENTACUENTOS
 elif modo == "📖 Cuentacuentos":
-    st.title("📖 La Hora del Cuento")
+    crear_encabezado("La Hora del Cuento") # Título limpio
+    
     if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
 
     for m in st.session_state.chat_cuentos:
@@ -261,7 +268,7 @@ elif modo == "📖 Cuentacuentos":
             try:
                 res = model.generate_content(f"Cuento infantil corto sobre: {tema}")
                 caja.markdown(res.text)
-                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
+                st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
                 
                 txt = res.text.replace("*", "").replace("#", "")
                 tts = gTTS(text=txt, lang='es')
