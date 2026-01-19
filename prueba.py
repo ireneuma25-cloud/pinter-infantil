@@ -8,7 +8,8 @@ import os
 import base64 
 
 # --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
+# AQUÍ ESTÁ EL CAMBIO: En vez de "🧸", ponemos "logo.png"
+st.set_page_config(page_title="Pinter Edu", page_icon="logo.png", layout="wide")
 
 # --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE + CLASES ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
@@ -55,7 +56,7 @@ with st.sidebar:
     imagen_segura("logo1.png", "100%") 
     
     st.write("") 
-    # CAMBIO 1: RENOMBRADO A "Oscuro"
+    # Selector de tema
     tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
     st.markdown("---")
 
@@ -87,7 +88,6 @@ else:
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
-    # CAMBIO 2: Textura de lino negro que, sobre marrón, da efecto terciopelo
     img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
 
 # Inyectamos el CSS de colores
