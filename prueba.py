@@ -14,13 +14,11 @@ st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
     """
     Inyecta la imagen como HTML directo.
-    clase_extra: Permite añadir una etiqueta para controlarla con CSS (ej: ocultar en móvil)
     """
     if os.path.exists(ruta_imagen):
         with open(ruta_imagen, "rb") as img_file:
             b64_string = base64.b64encode(img_file.read()).decode()
         
-        # HTML con clase personalizada para poder controlarla
         html = f"""
             <img src="data:image/png;base64,{b64_string}" class="{clase_extra}"
             style="width:{ancho_css}; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin: auto;">
@@ -57,12 +55,13 @@ with st.sidebar:
     imagen_segura("logo1.png", "100%") 
     
     st.write("") 
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Tema Oscuro"], horizontal=True)
+    # CAMBIO 1: RENOMBRADO A "Oscuro"
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
     st.markdown("---")
 
 # Lógica de Colores
 if tema == "🌞 Claro":
-    # TEMA CLARO
+    # TEMA CLARO (Papel Crema)
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
@@ -76,7 +75,7 @@ if tema == "🌞 Claro":
     c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    # TEMA OSCURO (Marrón Suave)
+    # TEMA OSCURO (Marrón Suave + Textura Aterciopelada)
     c_bg_app = "#3E2F28"      
     c_text_main = "#FFFFFF"   
     c_sidebar = "#4E3B32"     
@@ -88,7 +87,8 @@ else:
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
-    img_fondo = 'none'
+    # CAMBIO 2: Textura de lino negro que, sobre marrón, da efecto terciopelo
+    img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
 
 # Inyectamos el CSS de colores
 st.markdown(f"""
