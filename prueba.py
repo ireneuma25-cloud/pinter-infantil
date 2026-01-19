@@ -4,75 +4,82 @@ from gtts import gTTS
 import io
 import random
 import json
+import os 
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA ---
+# --- 2. GESTIÓN DEL TEMA Y LOGO ---
 with st.sidebar:
-    st.title("🧸 Menú Pinter")
+    # === AQUÍ PONEMOS TU LOGO ===
+    if os.path.exists("logo.png"):
+        # Muestra el logo centrado
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image("logo.png", width=150)
+    else:
+        st.warning("⚠️ Sube 'logo.png' a GitHub")
+    # ============================
+
+    st.title("Menú Pinter")
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
-# Lógica de Colores
+# Lógica de Colores (DISEÑO ALTO CONTRASTE)
 if tema == "🌞 Claro":
     # TEMA CLARO
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
-    c_sidebar_text = "#4A4A4A" # Texto oscuro en menú claro
+    c_sidebar_text = "#4A4A4A" 
     c_caja_chat = "#FFFFFF"
-    
-    # Inputs (Cajas de escribir)
     c_input_bg = "#FFFFFF" 
     c_input_text = "#000000"
     c_placeholder = "#666666" 
-    
-    # Botones
     c_btn_bg = "#F0F0F0"
     c_btn_text = "#000000"
     c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
     
 else:
-    # TEMA CHOCOLATE (ALTO CONTRASTE MENU)
+    # TEMA CHOCOLATE (SOLUCIÓN VISIBLE)
     c_bg_app = "#1E1611"      
     c_text_main = "#FFFFFF"   
     c_sidebar = "#2B2118"     
-    c_sidebar_text = "#FFFFFF" # <--- BLANCO PURO PARA EL MENÚ
+    c_sidebar_text = "#FFFFFF" # <--- BLANCO PURO PARA QUE SE LEA EL MENÚ
     c_caja_chat = "#3E2F26"   
     
-    # Cajas de escribir (Estilo Papel)
+    # Cajas de escribir (Color Papel para leer bien)
     c_input_bg = "#FFF8E7"    
     c_input_text = "#1E1611"  
     c_placeholder = "#555555" 
     
-    # Botones
+    # Botones Dorados
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectamos el CSS CORREGIDO
+# Inyectamos el CSS
 st.markdown(f"""
 <style>
     /* 1. Fuente y Colores Generales */
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
     
-    /* 2. BARRA LATERAL (EL ARREGLO IMPORTANTE) */
+    /* 2. BARRA LATERAL VISIBLE */
     section[data-testid="stSidebar"] {{ 
         background-color: {c_sidebar}; 
         border-right: 1px solid {c_border}; 
     }}
     
-    /* ESTO ES LO NUEVO: Forzamos que TODO el texto del menú sea del color elegido (Blanco en oscuro) */
+    /* Forzamos que TODO el texto del menú sea del color elegido */
     section[data-testid="stSidebar"] .stRadio label, 
     section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div {{
+    section[data-testid="stSidebar"] div,
+    section[data-testid="stSidebar"] h1 {{
         color: {c_sidebar_text} !important;
-        font-weight: 500 !important; /* Un poco más gordita la letra */
     }}
 
     /* Flechas e iconos del menú */
@@ -83,7 +90,7 @@ st.markdown(f"""
     h1, h2, h3, h4 {{ color: {c_text_main} !important; border-bottom: 2px solid #F4D03F; }}
     label, p, .stMarkdown {{ color: {c_text_main} !important; }}
 
-    /* 4. CAJAS DE TEXTO (INPUTS) - Estilo Papel */
+    /* 4. CAJAS DE TEXTO (INPUTS) */
     input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{
         background-color: {c_input_bg} !important;
         color: {c_input_text} !important;
