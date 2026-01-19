@@ -4,27 +4,50 @@ from gtts import gTTS
 import io
 import random
 import json
-import os
-import base64 
+import os 
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE ---
-def imagen_segura(ruta_imagen, ancho_px):
-    if os.path.exists(ruta_imagen):
-        with open(ruta_imagen, "rb") as img_file:
-            b64_string = base64.b64encode(img_file.read()).decode()
-        st.markdown(
-            f'<img src="data:image/png;base64,{b64_string}" '
-            f'style="width:{ancho_px}px; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin-left: auto;">',
-            unsafe_allow_html=True
-        )
+# --- 2. CSS PARA OCULTAR BOTONES Y AJUSTES VISUALES ---
+st.markdown("""
+<style>
+    /* Bloquear clics y arrastre en imágenes */
+    img {
+        pointer-events: none !important;
+        -webkit-user-drag: none !important;
+        user-select: none !important;
+    }
+    
+    /* Ocultar botones de pantalla completa y menú de imagen */
+    [data-testid="StyledFullScreenButton"], [data-testid="stImage"] button {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+    
+    /* Eliminar borde hover en imágenes */
+    [data-testid="stImage"]:hover {
+        box-shadow: none !important;
+    }
 
-# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
+    /* Ajuste de Fuente y Colores */
+    html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL (RESTAURADO) ---
 with st.sidebar:
-    # Logo del Menú (logo1.png)
-    imagen_segura("logo1.png", 180)
+    # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
+    # Volvemos a la estructura de columnas que te gustaba
+    if os.path.exists("logo1.png"):
+        c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
+        with c2:
+            st.image("logo1.png", use_column_width=True) 
+    else:
+        st.warning("⚠️ Sube 'logo1.png'")
+        st.markdown("---")
+    
     st.write("") 
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
@@ -57,43 +80,24 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# CSS GENERAL (AQUÍ ESTÁ EL TRUCO PARA SUBIRLO TODO)
+# Inyectamos el CSS de colores
 st.markdown(f"""
 <style>
-    /* Reduce el espacio vacío de arriba del todo */
-    .block-container {{
-        padding-top: 2rem !important; 
-    }}
-
-    html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
+    html, body, h1, h2, h3, p, label, div {{ color: {c_text_main} !important; }}
     
-    /* Menú */
+    /* Menú Lateral */
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }}
-    section[data-testid="stSidebar"] .stRadio label, section[data-testid="stSidebar"] p, 
-    section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div, 
-    section[data-testid="stSidebar"] h1 {{ color: {c_sidebar_text} !important; }}
-    button[kind="header"], span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
+    section[data-testid="stSidebar"] * {{ color: {c_sidebar_text} !important; }}
     
-    /* Títulos alineados */
-    h1 {{ 
-        color: {c_text_main} !important; 
-        border-bottom: 2px solid #F4D03F; 
-        margin-top: 0px !important;
-        padding-top: 10px !important;
-    }}
+    /* Inputs */
+    .stTextInput input, .stTextArea textarea {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }}
     
-    h2, h3, h4, label, p, .stMarkdown {{ color: {c_text_main} !important; }}
-    
-    /* Inputs y Botones */
-    input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }}
-    ::placeholder {{ color: {c_placeholder} !important; opacity: 1 !important; }}
+    /* Botones */
     .stButton > button {{ background-color: {c_btn_bg} !important; color: {c_btn_text} !important; border: 1px solid {c_text_main} !important; font-weight: bold !important; }}
-    .stButton > button:hover {{ filter: brightness(115%); transform: scale(1.02); }}
     
-    /* Cajas */
-    .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; border-radius: 12px; }}
-    .stMetric, .stCheckbox {{ background-color: {c_caja_chat}; color: {c_text_main}; padding: 10px; border-radius: 10px; border: 1px solid {c_border}; }}
+    /* Chat */
+    .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,7 +108,7 @@ try:
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 5. MENÚ LATERAL (CON EMOJIS) ---
+# --- 5. MENÚ LATERAL (HERRAMIENTAS CON EMOJIS) ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -123,25 +127,25 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 6. FUNCIÓN PARA EL ENCABEZADO (ALINEAR TÍTULO Y LOGO) ---
+# --- 6. FUNCIÓN DE ENCABEZADO (TITULO + LOGO EQUILIBRADOS) ---
 def crear_encabezado(titulo_texto):
-    # Creamos dos columnas: Izquierda (Título) y Derecha (Logo)
-    # Align="bottom" intenta que el texto y la imagen se alineen abajo
-    c_titulo, c_logo = st.columns([8, 1.5], gap="medium")
+    # Usamos columnas estándar para que no se descuadre
+    c_texto, c_logo = st.columns([0.85, 0.15]) 
     
-    with c_titulo:
-        # Título SIN emoji
-        st.title(titulo_texto)
+    with c_texto:
+        # Título limpio (sin emoji) y con borde inferior
+        st.markdown(f"<h1 style='border-bottom: 2px solid #F4D03F; padding-bottom: 10px;'>{titulo_texto}</h1>", unsafe_allow_html=True)
         
     with c_logo:
-        # Logo seguro (logo.png)
-        imagen_segura("logo.png", 100) # Tamaño 100 para que quede elegante
+        # Logo arriba a la derecha
+        if os.path.exists("logo.png"):
+            st.image("logo.png", use_column_width=True)
 
 # --- 7. LÓGICA PRINCIPAL ---
 
 # MODO 1: ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
-    crear_encabezado("Asistente General") # Título limpio
+    crear_encabezado("Asistente General")
     
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
@@ -161,7 +165,7 @@ if modo == "👩‍🏫 Asistente de Aula":
 
 # MODO 2: REDACTOR
 elif modo == "✍️ Redactor de Informes":
-    crear_encabezado("Redactor Mágico de Notas") # Título limpio
+    crear_encabezado("Redactor Mágico de Notas")
     st.info("Convierte tus notas rápidas en textos profesionales.")
     
     col1, col2 = st.columns(2)
@@ -186,13 +190,12 @@ elif modo == "✍️ Redactor de Informes":
 
 # MODO 3: MEDALLERO
 elif modo == "⭐ Medallero Semanal":
-    crear_encabezado("Medallero de la Clase") # Título limpio
+    crear_encabezado("Medallero de la Clase")
     
     if "puntos_alumnos" not in st.session_state:
         nombres = ["Lucas", "Sofía", "Mateo", "Valentina", "Hugo", "Martín"]
         st.session_state.puntos_alumnos = {nombre: 0 for nombre in nombres}
 
-    # Sección de Guardado
     with st.expander("💾 GUARDAR / CARGAR", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
@@ -225,7 +228,7 @@ elif modo == "⭐ Medallero Semanal":
 
 # MODO 4: ASAMBLEA
 elif modo == "📝 Asamblea y Lista":
-    crear_encabezado("Control de Asamblea") # Título limpio
+    crear_encabezado("Control de Asamblea")
     
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -252,7 +255,7 @@ elif modo == "📝 Asamblea y Lista":
 
 # MODO 5: CUENTACUENTOS
 elif modo == "📖 Cuentacuentos":
-    crear_encabezado("La Hora del Cuento") # Título limpio
+    crear_encabezado("La Hora del Cuento")
     
     if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
 
