@@ -1,3 +1,19 @@
+¡Me encanta esa idea! 🍫🧸
+
+Tienes toda la razón. Un marrón chocolate muy oscuro queda muchísimo más "cálido" y acogedor, y encaja perfecto con la temática del osito Pinter (en lugar del negro frío y tecnológico). Va a parecer una pizarra de corcho oscuro o madera noble.
+
+He preparado la paleta de colores "Chocolate Negro":
+
+Fondo: Un marrón café muy profundo (#1E1611).
+
+Cajas y Chat: Un tono madera oscura (#2C221B).
+
+Texto: Color crema suave (#E6DCCF) para que no canse la vista.
+
+Aquí tienes el código definitivo. Como siempre: Borra todo y pega esto.
+
+Python
+
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
@@ -8,36 +24,44 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (CLARO / OSCURO) ---
+# --- 2. GESTIÓN DEL TEMA (CLARO / CHOCOLATE) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
 # Definir colores
 if tema == "🌞 Claro":
+    # TEMA CLARO (Papel crema)
     c_fondo = "#FDFBF7"
     c_texto = "#4A4A4A"
     c_sidebar = "#F9F5EB"
     c_caja = "#FFFFFF"
+    c_borde = "#F0F0F0"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    c_fondo = "#1A1C24"
-    c_texto = "#E0E0E0"
-    c_sidebar = "#262730"
-    c_caja = "#31333F"
+    # TEMA OSCURO (Marrón Chocolate Profundo)
+    c_fondo = "#1E1611"       # Café muy oscuro (casi negro pero cálido)
+    c_texto = "#E6DCCF"       # Crema suave (se lee genial sobre marrón)
+    c_sidebar = "#2B2118"     # Marrón un poco más claro para el menú
+    c_caja = "#362920"        # Madera oscura para las cajas
+    c_borde = "#4A3B32"       # Bordes color cacao
     img_fondo = 'none'
 
-# Aplicar estilos (f-string corregido)
+# Aplicar estilos CSS
 st.markdown(f"""
 <style>
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
     .stApp {{ background-color: {c_fondo}; background-image: {img_fondo}; }}
     h1, h2, h3 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
-    .stChatMessage {{ background-color: {c_caja}; border: 1px solid #444; border-radius: 12px; }}
-    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; }}
-    .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; }}
-    .stTextInput>div>div>input {{ color: {c_texto}; background-color: {c_caja}; }}
+    
+    /* Cajas de chat y elementos */
+    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
+    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; }}
+    .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; border: 1px solid {c_borde}; }}
+    
+    /* Inputs (donde escribes) */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ color: {c_texto}; background-color: {c_caja}; border: 1px solid {c_borde}; }}
     p {{ color: {c_texto}; }}
 </style>
 """, unsafe_allow_html=True)
