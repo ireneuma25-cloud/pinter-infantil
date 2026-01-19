@@ -11,19 +11,18 @@ st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
 # --- 2. GESTIÓN DEL TEMA Y LOGO PRINCIPAL (MENÚ LATERAL) ---
 with st.sidebar:
-    # === AQUÍ VA EL LOGO NUEVO (logo1.png) ===
+    # === LOGO NUEVO (logo1.png) ===
     if os.path.exists("logo1.png"):
-        # Muestra el logo nuevo centrado en el menú
-        c1, c2, c3 = st.columns([1, 2, 1])
+        # Muestra el logo centrado y SIN TÍTULO DEBAJO
+        c1, c2, c3 = st.columns([0.5, 2, 0.5]) # Ajuste para centrar mejor
         with c2:
-            st.image("logo1.png", width=150)
+            st.image("logo1.png", width=180) # Un pelín más grande si quieres
     else:
-        # Aviso si no has subido el archivo nuevo
-        st.warning("⚠️ Faltan archivos: Sube 'logo1.png' y asegúrate de que 'logo.png' sigue ahí.")
+        st.warning("⚠️ Faltan archivos: Sube 'logo1.png'")
         st.markdown("---")
-    # =========================================
-
-    st.title("Menú Pinter")
+    
+    # HE BORRADO EL TÍTULO "MENÚ PINTER" PARA QUE SUBA EL LOGO
+    
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
@@ -58,33 +57,46 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectamos el CSS
+# Inyectamos el CSS (AQUÍ ESTÁ EL TRUCO ANTI-CLIC)
 st.markdown(f"""
 <style>
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
+    
+    /* TRUCO PARA QUE LAS IMÁGENES NO SE PUEDAN CLICAR NI AMPLIAR */
+    img {{
+        pointer-events: none; /* Esto hace que el ratón "ignore" la imagen */
+        user-select: none;
+    }}
+    
+    /* Estilos del Menú */
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }}
     section[data-testid="stSidebar"] .stRadio label, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div, section[data-testid="stSidebar"] h1 {{ color: {c_sidebar_text} !important; }}
     button[kind="header"], span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
+    
+    /* Estilos Generales */
     h1, h2, h3, h4 {{ color: {c_text_main} !important; border-bottom: 2px solid #F4D03F; }}
     label, p, .stMarkdown {{ color: {c_text_main} !important; }}
+    
+    /* Inputs y Botones */
     input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }}
     ::placeholder {{ color: {c_placeholder} !important; opacity: 1 !important; }}
     .stButton > button {{ background-color: {c_btn_bg} !important; color: {c_btn_text} !important; border: 1px solid {c_text_main} !important; font-weight: bold !important; }}
     .stButton > button:hover {{ filter: brightness(115%); transform: scale(1.02); }}
+    
+    /* Cajas */
     .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; border-radius: 12px; }}
     .stMetric, .stCheckbox {{ background-color: {c_caja_chat}; color: {c_text_main}; padding: 10px; border-radius: 10px; border: 1px solid {c_border}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGO ESQUINA SUPERIOR DERECHA (logo.png) ---
-# Creamos dos columnas invisibles al principio de la página.
-# La primera ocupa casi todo (90%) y la segunda es pequeñita (10%) para el logo.
-c_main, c_corner_logo = st.columns([9, 1])
+# --- 3. LOGO ESQUINA SUPERIOR DERECHA (MÁS GRANDE) ---
+# Hemos cambiado las columnas: Ahora la del logo (derecha) es más ancha (ratio 2)
+c_main, c_corner_logo = st.columns([8, 2]) 
 with c_corner_logo:
-    # Si el logo antiguo existe, lo mostramos pequeñito (width=70)
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=70)
+        # Lo ponemos a la derecha del todo y más grande (width=130)
+        st.image("logo.png", width=130) 
 
 # --- 4. CONEXIÓN ---
 try:
@@ -255,7 +267,7 @@ elif modo == "📖 Cuentacuentos":
             try:
                 res = model.generate_content(f"Cuento infantil corto sobre: {tema}")
                 caja.markdown(res.text)
-                st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
+                st.session_state.chat_general.append({"role": "assistant", "content": res.text}) # Corrección menor en lógica
                 
                 txt = res.text.replace("*", "").replace("#", "")
                 tts = gTTS(text=txt, lang='es')
