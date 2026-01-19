@@ -36,10 +36,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL (RESTAURADO) ---
+# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
     # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
-    # Volvemos a la estructura de columnas que te gustaba
     if os.path.exists("logo1.png"):
         c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
         with c2:
@@ -49,11 +48,13 @@ with st.sidebar:
         st.markdown("---")
     
     st.write("") 
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
+    # HEMOS CAMBIADO EL NOMBRE A "🌙 Tema Oscuro"
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Tema Oscuro"], horizontal=True)
     st.markdown("---")
 
 # Lógica de Colores
 if tema == "🌞 Claro":
+    # TEMA CLARO (Igual que antes)
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
@@ -67,14 +68,18 @@ if tema == "🌞 Claro":
     c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    c_bg_app = "#1E1611"      
+    # TEMA OSCURO (NUEVO COLOR MARRÓN MÁS SUAVE)
+    # Antes era #1E1611 (Casi negro), ahora es #3E2F28 (Madera oscura)
+    c_bg_app = "#3E2F28"      
     c_text_main = "#FFFFFF"   
-    c_sidebar = "#2B2118"     
+    c_sidebar = "#4E3B32"     # Barra lateral un poco más clara para contraste
     c_sidebar_text = "#FFFFFF" 
-    c_caja_chat = "#3E2F26"   
-    c_input_bg = "#FFF8E7"    
-    c_input_text = "#1E1611"  
+    c_caja_chat = "#5D473D"   # Cajas del chat un poco más claras
+    
+    c_input_bg = "#FFF8E7"    # Mantenemos papel crema para leer bien
+    c_input_text = "#3E2F28"  
     c_placeholder = "#555555" 
+    
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
@@ -108,7 +113,7 @@ try:
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 5. MENÚ LATERAL (HERRAMIENTAS CON EMOJIS) ---
+# --- 5. MENÚ LATERAL ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -127,17 +132,14 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 6. FUNCIÓN DE ENCABEZADO (TITULO + LOGO EQUILIBRADOS) ---
+# --- 6. FUNCIÓN DE ENCABEZADO ---
 def crear_encabezado(titulo_texto):
-    # Usamos columnas estándar para que no se descuadre
     c_texto, c_logo = st.columns([0.85, 0.15]) 
     
     with c_texto:
-        # Título limpio (sin emoji) y con borde inferior
         st.markdown(f"<h1 style='border-bottom: 2px solid #F4D03F; padding-bottom: 10px;'>{titulo_texto}</h1>", unsafe_allow_html=True)
         
     with c_logo:
-        # Logo arriba a la derecha
         if os.path.exists("logo.png"):
             st.image("logo.png", use_column_width=True)
 
