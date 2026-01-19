@@ -8,7 +8,6 @@ import os
 import base64 
 
 # --- 1. CONFIGURACIÓN ---
-# AQUÍ ESTÁ EL CAMBIO: Usamos 'logo2.png' para el icono de la pestaña
 st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide")
 
 # --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE + CLASES ---
@@ -38,31 +37,31 @@ st.markdown("""
     
     /* --- AQUÍ ESTÁ EL ARREGLO PARA EL MÓVIL --- */
     @media only screen and (max-width: 768px) {
-        /* Si la pantalla es pequeña (móvil), OCULTA el logo de la esquina */
-        .logo-esquina {
-            display: none !important;
-        }
-        /* Y ajusta un poco el título para que no quede raro */
-        h1 {
-            text-align: center;
-        }
+        .logo-esquina { display: none !important; }
+        h1 { text-align: center; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 4. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
-    # === LOGO MENÚ (Siempre visible, usa logo1.png) ===
-    imagen_segura("logo1.png", "100%") 
+    # === LOGO MENÚ ===
+    # CAMBIO 1: Antes era "100%", ahora "85%" para que sea más pequeño
+    imagen_segura("logo1.png", "85%") 
     
     st.write("") 
     # Selector de tema
     tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
-    st.markdown("---")
+    
+    # CAMBIO 2: LÍNEA SEPARADORA PEGADITA ARRIBA
+    # Usamos HTML con margin-top negativo (-15px) para subirla
+    st.markdown("""
+        <hr style='margin-top: -15px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
+    """, unsafe_allow_html=True)
 
 # Lógica de Colores
 if tema == "🌞 Claro":
-    # TEMA CLARO (Papel Crema)
+    # TEMA CLARO
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
@@ -76,7 +75,7 @@ if tema == "🌞 Claro":
     c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    # TEMA OSCURO (Marrón Suave + Textura Aterciopelada)
+    # TEMA OSCURO
     c_bg_app = "#3E2F28"      
     c_text_main = "#FFFFFF"   
     c_sidebar = "#4E3B32"     
