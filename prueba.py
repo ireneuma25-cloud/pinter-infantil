@@ -8,53 +8,39 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (NEBULOSA LENTA) ---
+# --- 2. GESTIÓN DEL TEMA (ESTÁTICO Y ELEGANTE) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Oscuro"], horizontal=True)
     st.markdown("---")
 
-# Definir Colores y Animación CSS
+# Definir Colores (Sin animaciones)
 if tema == "🌞 Claro":
-    # --- TEMA CLARO (Nebulosa de Vainilla) ---
-    # Solo 2 colores muy parecidos (Beige y Crema) moviéndose MUY LENTO
-    css_fondo = """
-        background: linear-gradient(120deg, #FDFBF7, #F5E6D3, #FDFBF7);
-        background-size: 400% 400%;
-        animation: gradient 60s ease infinite;
-    """
+    # TEMA CLARO (Marrón clarito / Crema)
+    c_fondo = "#FDFBF7"
     c_texto = "#4A4A4A"
-    c_sidebar = "rgba(253, 251, 247, 0.9)" 
-    c_caja = "rgba(255, 255, 255, 0.85)" # Casi opaco
-    c_borde = "rgba(0,0,0,0.05)"
+    c_sidebar = "#F9F5EB"
+    c_caja = "#FFFFFF"
+    c_borde = "#F0F0F0"
+    # Textura de papel suave
+    img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 
 else:
-    # --- TEMA OSCURO (Nebulosa de Café) ---
-    # Solo 2 colores oscuros (Café solo y Café con leche muy oscuro)
-    css_fondo = """
-        background: linear-gradient(120deg, #1E1611, #2E221A, #1E1611);
-        background-size: 400% 400%;
-        animation: gradient 60s ease infinite;
-    """
-    c_texto = "#E6DCCF" 
-    c_sidebar = "rgba(43, 33, 24, 0.95)"
-    c_caja = "rgba(54, 41, 32, 0.9)" # Madera oscura
-    c_borde = "rgba(255,255,255,0.05)"
+    # TEMA CHOCOLATE (Marrón oscuro)
+    c_fondo = "#1E1611"       # Café muy oscuro
+    c_texto = "#E6DCCF"       # Crema suave
+    c_sidebar = "#2B2118"     # Marrón menú
+    c_caja = "#362920"        # Madera oscura cajas
+    c_borde = "#4A3B32"       # Bordes cacao
+    img_fondo = 'none'
 
-# Inyectamos el CSS (Estilos)
+# Aplicar estilos CSS
 st.markdown(f"""
 <style>
-    /* Animación LENTA (60 segundos) */
-    @keyframes gradient {{
-        0% {{background-position: 0% 50%;}}
-        50% {{background-position: 100% 50%;}}
-        100% {{background-position: 0% 50%;}}
-    }}
-
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
     
-    /* Fondo animado */
-    .stApp {{ {css_fondo} }}
+    /* Fondo estático */
+    .stApp {{ background-color: {c_fondo}; background-image: {img_fondo}; }}
     
     h1, h2, h3 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
     
@@ -78,6 +64,7 @@ except Exception as e:
 
 # --- 4. MENÚ LATERAL ---
 with st.sidebar:
+    # El Asistente sigue arriba del todo
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
         "⭐ Medallero Semanal", 
