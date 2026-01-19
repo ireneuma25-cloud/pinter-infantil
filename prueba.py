@@ -8,39 +8,84 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (ESTÁTICO Y ELEGANTE) ---
+# --- 2. GESTIÓN DEL TEMA (SOLUCIÓN ALTO CONTRASTE) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
-# Definir Colores
+# Definir Colores y Estilos CSS
 if tema == "🌞 Claro":
+    # TEMA CLARO
     c_fondo = "#FDFBF7"
     c_texto = "#4A4A4A"
     c_sidebar = "#F9F5EB"
-    c_caja = "#FFFFFF"
-    c_borde = "#F0F0F0"
+    c_caja = "#FFFFFF" # Cajas del chat
+    c_input_bg = "#FFFFFF" # Fondo donde escribes
+    c_input_text = "#4A4A4A" # Color de lo que escribes
+    c_boton = "#F0F0F0"
+    c_boton_text = "#000000"
+    c_borde = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
+    
 else:
-    c_fondo = "#1E1611"
-    c_texto = "#E6DCCF"
-    c_sidebar = "#2B2118"
-    c_caja = "#362920"
-    c_borde = "#4A3B32"
+    # TEMA CHOCOLATE (ESTILO "PAPEL SOBRE MADERA")
+    c_fondo = "#1E1611"       # Fondo muy oscuro
+    c_texto = "#FFFFFF"       # Textos generales en blanco
+    c_sidebar = "#2B2118"     # Menú oscuro
+    c_caja = "#3E2F26"        # Cajas del chat oscuras
+    
+    # AQUÍ ESTÁ EL TRUCO PARA QUE SE LEA:
+    c_input_bg = "#FFF8E7"    # Las cajas de escribir serán CLARAS (Crema)
+    c_input_text = "#1E1611"  # La letra al escribir será OSCURA
+    
+    c_boton = "#F4D03F"       # Botones DORADOS brillantes
+    c_boton_text = "#1E1611"  # Texto botón oscuro
+    c_borde = "#F4D03F"       # Bordes dorados para resaltar
     img_fondo = 'none'
 
-# Aplicar estilos CSS
+# Inyectar CSS (REVISADO PARA VISIBILIDAD)
 st.markdown(f"""
 <style>
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
     .stApp {{ background-color: {c_fondo}; background-image: {img_fondo}; }}
-    h1, h2, h3 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
-    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
+    
+    /* Títulos */
+    h1, h2, h3, h4 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
+    label, .stMarkdown p {{ color: {c_texto} !important; }}
+
+    /* BARRA LATERAL (Flechas e iconos visibles) */
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; }}
+    button[kind="header"] {{ color: {c_texto} !important; }}
+    span[data-testid="stArrow"] {{ color: {c_texto} !important; }}
+
+    /* CAJAS DE CHAT (Mantienen el estilo del tema) */
+    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
     .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; border: 1px solid {c_borde}; }}
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ color: {c_texto}; background-color: {c_caja}; border: 1px solid {c_borde}; }}
-    p {{ color: {c_texto}; }}
+    
+    /* INPUTS (CAJAS DE TEXTO) - ALTO CONTRASTE */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ 
+        background-color: {c_input_bg} !important; 
+        color: {c_input_text} !important; 
+        border: 2px solid {c_borde} !important;
+        font-weight: 500;
+    }}
+    /* El texto de ejemplo (placeholder) ahora será gris oscuro sobre fondo claro -> SE VE BIEN */
+    ::placeholder {{ color: #888888 !important; opacity: 1; }}
+    
+    /* BOTONES (Muy visibles) */
+    .stButton > button {{
+        background-color: {c_boton} !important;
+        color: {c_boton_text} !important;
+        border: 1px solid {c_borde} !important;
+        font-weight: bold;
+        transition: all 0.3s;
+    }}
+    .stButton > button:hover {{
+        transform: scale(1.02);
+        filter: brightness(110%);
+        border-color: #FFFFFF !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -55,7 +100,7 @@ except Exception as e:
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
-        "✍️ Redactor de Informes", # <--- ¡NUEVO!
+        "✍️ Redactor de Informes",
         "⭐ Medallero Semanal", 
         "📝 Asamblea y Lista", 
         "📖 Cuentacuentos"
@@ -92,17 +137,17 @@ if modo == "👩‍🏫 Asistente de Aula":
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e: caja.error(f"Error: {e}")
 
-# MODO NUEVO: REDACTOR DE INFORMES
+# MODO 2: REDACTOR DE INFORMES
 elif modo == "✍️ Redactor de Informes":
     st.title("✍️ Redactor Mágico de Notas")
-    st.info("Convierte tus notas rápidas en textos profesionales para las familias.")
+    st.info("Convierte tus notas rápidas en textos profesionales.")
     
     col1, col2 = st.columns(2)
     
     with col1:
         nombre_alumno = st.text_input("Nombre del alumno/a:", placeholder="Ej: Lucas")
-        puntos_clave = st.text_area("Puntos clave (separados por comas):", 
-                                   placeholder="Ej: come bien, pega a los compañeros, sabe los colores, muy alegre",
+        puntos_clave = st.text_area("Puntos clave:", 
+                                   placeholder="Ej: come bien, pega a los compañeros, sabe los colores...",
                                    height=150)
         
         tono = st.select_slider("Tono del mensaje:", options=["Muy Formal", "Cercano y Amable", "Muy Cariñoso"], value="Cercano y Amable")
@@ -110,28 +155,23 @@ elif modo == "✍️ Redactor de Informes":
         if st.button("✨ Generar Informe"):
             if nombre_alumno and puntos_clave:
                 prompt_informe = f"""
-                Actúa como una maestra de educación infantil experta.
-                Escribe un informe breve para los padres de {nombre_alumno}.
-                Usa un tono {tono}.
-                Básate en estos puntos clave: {puntos_clave}.
-                El texto debe ser constructivo, empático y profesional.
-                No pongas asunto, solo el cuerpo del mensaje.
+                Actúa como una maestra experta. Redacta un mensaje para los padres de {nombre_alumno}.
+                Tono: {tono}.
+                Puntos a tratar: {puntos_clave}.
                 """
                 try:
                     res_informe = model.generate_content(prompt_informe)
                     st.session_state.resultado_informe = res_informe.text
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Error: {e}")
             else:
-                st.warning("Por favor, escribe el nombre y algunos puntos clave.")
+                st.warning("Escribe el nombre y los puntos clave.")
 
     with col2:
         st.subheader("📝 Resultado:")
         if "resultado_informe" in st.session_state:
-            st.write(st.session_state.resultado_informe)
-            st.button("Copiar (Selecciona el texto y Ctrl+C)")
+            st.text_area("Copia el resultado:", value=st.session_state.resultado_informe, height=300)
 
-# MODO 2: MEDALLERO
+# MODO 3: MEDALLERO
 elif modo == "⭐ Medallero Semanal":
     st.title("⭐ Medallero de la Clase")
     st.info("Sistema de puntos.")
@@ -174,7 +214,7 @@ elif modo == "⭐ Medallero Semanal":
             st.markdown("---")
         idx += 1
 
-# MODO 3: ASAMBLEA
+# MODO 4: ASAMBLEA
 elif modo == "📝 Asamblea y Lista":
     st.title("📝 Control de Asamblea")
     col1, col2 = st.columns([1, 2])
@@ -200,7 +240,7 @@ elif modo == "📝 Asamblea y Lista":
             st.balloons()
             st.success(f"## ¡El encargado es: {elegido}! 👑")
 
-# MODO 4: CUENTACUENTOS
+# MODO 5: CUENTACUENTOS
 elif modo == "📖 Cuentacuentos":
     st.title("📖 La Hora del Cuento")
     if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
