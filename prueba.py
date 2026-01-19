@@ -52,7 +52,7 @@ with st.sidebar:
     # Selector de tema
     tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
     
-    # LÍNEA 1 (Compacta)
+    # LÍNEA 1 (Esta la dejamos pegadita como te gustaba antes)
     st.markdown("""
         <hr style='margin-top: -15px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
     """, unsafe_allow_html=True)
@@ -119,9 +119,9 @@ with st.sidebar:
         "📖 Cuentacuentos"
     ])
     
-    # CAMBIO: LÍNEA 2 (Compacta también aquí)
+    # CAMBIO AQUÍ: La he bajado un pelín (de -15px a -5px) para que respire
     st.markdown("""
-        <hr style='margin-top: -15px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
+        <hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
     """, unsafe_allow_html=True)
     
     if st.button("💾 Descargar Chat"):
