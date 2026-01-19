@@ -8,8 +8,8 @@ import os
 import base64 
 
 # --- 1. CONFIGURACIÓN ---
-# AQUÍ ESTÁ EL CAMBIO: En vez de "🧸", ponemos "logo.png"
-st.set_page_config(page_title="Pinter Edu", page_icon="logo.png", layout="wide")
+# AQUÍ ESTÁ EL CAMBIO: Usamos 'logo2.png' para el icono de la pestaña
+st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide")
 
 # --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE + CLASES ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
@@ -52,7 +52,7 @@ st.markdown("""
 
 # --- 4. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
-    # === LOGO MENÚ (Siempre visible) ===
+    # === LOGO MENÚ (Siempre visible, usa logo1.png) ===
     imagen_segura("logo1.png", "100%") 
     
     st.write("") 
@@ -139,7 +139,7 @@ def crear_encabezado(titulo_texto):
         st.markdown(f"<h1 style='border-bottom: 2px solid #F4D03F; padding-bottom: 10px;'>{titulo_texto}</h1>", unsafe_allow_html=True)
         
     with c_logo:
-        # Añadimos la clase 'logo-esquina' para que el CSS sepa a quién ocultar en el móvil
+        # Usa logo.png para la esquina (oculto en móvil)
         imagen_segura("logo.png", "100%", clase_extra="logo-esquina")
 
 # --- 8. LÓGICA PRINCIPAL ---
