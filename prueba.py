@@ -9,17 +9,19 @@ import os
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA Y LOGO ---
+# --- 2. GESTIÓN DEL TEMA Y LOGO PRINCIPAL (MENÚ LATERAL) ---
 with st.sidebar:
-    # === AQUÍ PONEMOS TU LOGO ===
-    if os.path.exists("logo.png"):
-        # Muestra el logo centrado
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image("logo.png", width=150)
+    # === AQUÍ VA EL LOGO NUEVO (logo1.png) ===
+    if os.path.exists("logo1.png"):
+        # Muestra el logo nuevo centrado en el menú
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.image("logo1.png", width=150)
     else:
-        st.warning("⚠️ Sube 'logo.png' a GitHub")
-    # ============================
+        # Aviso si no has subido el archivo nuevo
+        st.warning("⚠️ Faltan archivos: Sube 'logo1.png' y asegúrate de que 'logo.png' sigue ahí.")
+        st.markdown("---")
+    # =========================================
 
     st.title("Menú Pinter")
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
@@ -42,19 +44,15 @@ if tema == "🌞 Claro":
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
     
 else:
-    # TEMA CHOCOLATE (SOLUCIÓN VISIBLE)
+    # TEMA CHOCOLATE
     c_bg_app = "#1E1611"      
     c_text_main = "#FFFFFF"   
     c_sidebar = "#2B2118"     
-    c_sidebar_text = "#FFFFFF" # <--- BLANCO PURO PARA QUE SE LEA EL MENÚ
+    c_sidebar_text = "#FFFFFF" 
     c_caja_chat = "#3E2F26"   
-    
-    # Cajas de escribir (Color Papel para leer bien)
     c_input_bg = "#FFF8E7"    
     c_input_text = "#1E1611"  
     c_placeholder = "#555555" 
-    
-    # Botones Dorados
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
@@ -63,71 +61,39 @@ else:
 # Inyectamos el CSS
 st.markdown(f"""
 <style>
-    /* 1. Fuente y Colores Generales */
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
-    
-    /* 2. BARRA LATERAL VISIBLE */
-    section[data-testid="stSidebar"] {{ 
-        background-color: {c_sidebar}; 
-        border-right: 1px solid {c_border}; 
-    }}
-    
-    /* Forzamos que TODO el texto del menú sea del color elegido */
-    section[data-testid="stSidebar"] .stRadio label, 
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] h1 {{
-        color: {c_sidebar_text} !important;
-    }}
-
-    /* Flechas e iconos del menú */
-    button[kind="header"] {{ color: {c_sidebar_text} !important; }}
-    span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
-
-    /* 3. Títulos */
+    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }}
+    section[data-testid="stSidebar"] .stRadio label, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div, section[data-testid="stSidebar"] h1 {{ color: {c_sidebar_text} !important; }}
+    button[kind="header"], span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
     h1, h2, h3, h4 {{ color: {c_text_main} !important; border-bottom: 2px solid #F4D03F; }}
     label, p, .stMarkdown {{ color: {c_text_main} !important; }}
-
-    /* 4. CAJAS DE TEXTO (INPUTS) */
-    input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{
-        background-color: {c_input_bg} !important;
-        color: {c_input_text} !important;
-        border: 2px solid {c_border} !important;
-    }}
-    
-    ::placeholder {{
-        color: {c_placeholder} !important;
-        opacity: 1 !important;
-    }}
-    
-    /* 5. BOTONES */
-    .stButton > button {{
-        background-color: {c_btn_bg} !important;
-        color: {c_btn_text} !important;
-        border: 1px solid {c_text_main} !important;
-        font-weight: bold !important;
-    }}
-    .stButton > button:hover {{
-        filter: brightness(115%);
-        transform: scale(1.02);
-    }}
-
-    /* 6. Cajas de Chat */
+    input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }}
+    ::placeholder {{ color: {c_placeholder} !important; opacity: 1 !important; }}
+    .stButton > button {{ background-color: {c_btn_bg} !important; color: {c_btn_text} !important; border: 1px solid {c_text_main} !important; font-weight: bold !important; }}
+    .stButton > button:hover {{ filter: brightness(115%); transform: scale(1.02); }}
     .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; border-radius: 12px; }}
     .stMetric, .stCheckbox {{ background-color: {c_caja_chat}; color: {c_text_main}; padding: 10px; border-radius: 10px; border: 1px solid {c_border}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. CONEXIÓN ---
+# --- 3. LOGO ESQUINA SUPERIOR DERECHA (logo.png) ---
+# Creamos dos columnas invisibles al principio de la página.
+# La primera ocupa casi todo (90%) y la segunda es pequeñita (10%) para el logo.
+c_main, c_corner_logo = st.columns([9, 1])
+with c_corner_logo:
+    # Si el logo antiguo existe, lo mostramos pequeñito (width=70)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=70)
+
+# --- 4. CONEXIÓN ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 4. MENÚ LATERAL ---
+# --- 5. MENÚ LATERAL ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -147,7 +113,7 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 5. LÓGICA PRINCIPAL ---
+# --- 6. LÓGICA PRINCIPAL ---
 
 # MODO 1: ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
@@ -297,4 +263,3 @@ elif modo == "📖 Cuentacuentos":
                 tts.write_to_fp(bio)
                 st.audio(bio, format='audio/mp3')
             except Exception as e: caja.error(f"Error: {e}")
-
