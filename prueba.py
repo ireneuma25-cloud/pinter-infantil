@@ -8,44 +8,43 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (ANIMADO SUTIL) ---
+# --- 2. GESTIÓN DEL TEMA (NEBULOSA LENTA) ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    # Volvemos a solo dos opciones, pero ambas tendrán animación
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
-# Lógica de colores y Animación CSS
+# Definir Colores y Animación CSS
 if tema == "🌞 Claro":
-    # --- TEMA CLARO (Nebulosa Beige) ---
-    # Animación muy suave entre tonos crema, beige y blanco
+    # --- TEMA CLARO (Nebulosa de Vainilla) ---
+    # Solo 2 colores muy parecidos (Beige y Crema) moviéndose MUY LENTO
     css_fondo = """
-        background: linear-gradient(-45deg, #FDFBF7, #F5F0E1, #FFF8E7, #FDFBF7);
+        background: linear-gradient(120deg, #FDFBF7, #F5E6D3, #FDFBF7);
         background-size: 400% 400%;
-        animation: gradient 20s ease infinite;
+        animation: gradient 60s ease infinite;
     """
     c_texto = "#4A4A4A"
-    c_sidebar = "rgba(249, 245, 235, 0.85)" # Semitransparente
-    c_caja = "rgba(255, 255, 255, 0.8)"     # Blanco casi opaco para leer bien
-    c_borde = "rgba(0, 0, 0, 0.05)"
+    c_sidebar = "rgba(253, 251, 247, 0.9)" 
+    c_caja = "rgba(255, 255, 255, 0.85)" # Casi opaco
+    c_borde = "rgba(0,0,0,0.05)"
 
 else:
-    # --- TEMA CHOCOLATE (Nebulosa de Cacao) ---
-    # Animación suave entre tonos café oscuro
+    # --- TEMA OSCURO (Nebulosa de Café) ---
+    # Solo 2 colores oscuros (Café solo y Café con leche muy oscuro)
     css_fondo = """
-        background: linear-gradient(-45deg, #1E1611, #2B2118, #1A120D, #261E16);
+        background: linear-gradient(120deg, #1E1611, #2E221A, #1E1611);
         background-size: 400% 400%;
-        animation: gradient 20s ease infinite;
+        animation: gradient 60s ease infinite;
     """
-    c_texto = "#E6DCCF"
-    c_sidebar = "rgba(43, 33, 24, 0.9)"
-    c_caja = "rgba(54, 41, 32, 0.85)"      # Madera oscura semitransparente
-    c_borde = "rgba(255, 255, 255, 0.1)"
+    c_texto = "#E6DCCF" 
+    c_sidebar = "rgba(43, 33, 24, 0.95)"
+    c_caja = "rgba(54, 41, 32, 0.9)" # Madera oscura
+    c_borde = "rgba(255,255,255,0.05)"
 
-# Inyectamos el CSS con la animación
+# Inyectamos el CSS (Estilos)
 st.markdown(f"""
 <style>
-    /* Definición del movimiento (La Nebulosa) */
+    /* Animación LENTA (60 segundos) */
     @keyframes gradient {{
         0% {{background-position: 0% 50%;}}
         50% {{background-position: 100% 50%;}}
@@ -54,12 +53,12 @@ st.markdown(f"""
 
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
     
-    /* Aplicamos el fondo animado al cuerpo de la app */
+    /* Fondo animado */
     .stApp {{ {css_fondo} }}
     
     h1, h2, h3 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
     
-    /* Cajas de chat y elementos (con el efecto cristal sutil) */
+    /* Cajas y elementos */
     .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; }}
     .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; border: 1px solid {c_borde}; }}
