@@ -1,13 +1,3 @@
-¡Oído cocina! 👨‍🍳 Cambios anotados:
-
-Texto del Guardado: He cambiado el mensaje para que quede claro que hay que guardar SIEMPRE antes de cerrar, no solo los viernes.
-
-Orden del Menú: He movido al Asistente al primer puesto, para que sea lo primero que veas al entrar.
-
-Aquí tienes el código actualizado. Como siempre: Borra todo lo que haya en prueba.py y pega esto nuevo.
-
-Python
-
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
@@ -190,3 +180,4 @@ elif modo == "📖 Cuentacuentos":
                 tts.write_to_fp(bio)
                 st.audio(bio, format='audio/mp3')
             except Exception as e: caja.error(f"Error: {e}")
+
