@@ -1,19 +1,3 @@
-¡Me encanta esa idea! 🍫🧸
-
-Tienes toda la razón. Un marrón chocolate muy oscuro queda muchísimo más "cálido" y acogedor, y encaja perfecto con la temática del osito Pinter (en lugar del negro frío y tecnológico). Va a parecer una pizarra de corcho oscuro o madera noble.
-
-He preparado la paleta de colores "Chocolate Negro":
-
-Fondo: Un marrón café muy profundo (#1E1611).
-
-Cajas y Chat: Un tono madera oscura (#2C221B).
-
-Texto: Color crema suave (#E6DCCF) para que no canse la vista.
-
-Aquí tienes el código definitivo. Como siempre: Borra todo y pega esto.
-
-Python
-
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
@@ -210,3 +194,4 @@ elif modo == "📖 Cuentacuentos":
                 tts.write_to_fp(bio)
                 st.audio(bio, format='audio/mp3')
             except Exception as e: caja.error(f"Error: {e}")
+
