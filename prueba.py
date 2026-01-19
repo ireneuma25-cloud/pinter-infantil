@@ -4,57 +4,55 @@ from gtts import gTTS
 import io
 import random
 import json
-import os 
+import os
+import base64 # Importante para la imagen segura
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. CSS PARA OCULTAR BOTONES Y AJUSTES VISUALES ---
+# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE (HTML PURO) ---
+def imagen_segura(ruta_imagen, ancho_css):
+    """
+    Inyecta la imagen como HTML directo.
+    ancho_css: puede ser '150px' o '100%'
+    """
+    if os.path.exists(ruta_imagen):
+        with open(ruta_imagen, "rb") as img_file:
+            b64_string = base64.b64encode(img_file.read()).decode()
+        
+        html = f"""
+            <img src="data:image/png;base64,{b64_string}" 
+            style="width:{ancho_css}; pointer-events: none; user-select: none; -webkit-user-drag: none; display: block; margin: auto;">
+        """
+        st.markdown(html, unsafe_allow_html=True)
+
+# --- 3. CSS GENERAL ---
 st.markdown("""
 <style>
-    /* Bloquear clics y arrastre en imágenes */
-    img {
-        pointer-events: none !important;
-        -webkit-user-drag: none !important;
-        user-select: none !important;
-    }
-    
-    /* Ocultar botones de pantalla completa y menú de imagen */
-    [data-testid="StyledFullScreenButton"], [data-testid="stImage"] button {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-    }
-    
-    /* Eliminar borde hover en imágenes */
-    [data-testid="stImage"]:hover {
-        box-shadow: none !important;
-    }
-
-    /* Ajuste de Fuente y Colores */
+    /* Ajuste de Fuente */
     html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
+    
+    /* Bloqueo extra por si acaso */
+    img { pointer-events: none !important; }
+    [data-testid="StyledFullScreenButton"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
+# --- 4. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
-    # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
-    if os.path.exists("logo1.png"):
-        c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
-        with c2:
-            st.image("logo1.png", use_column_width=True) 
-    else:
-        st.warning("⚠️ Sube 'logo1.png'")
-        st.markdown("---")
+    # === LOGO MENÚ ===
+    # Usamos la función segura. Ponemos '100%' para que se ajuste a la columna
+    c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
+    with c2:
+        imagen_segura("logo1.png", "100%") 
     
     st.write("") 
-    # HEMOS CAMBIADO EL NOMBRE A "🌙 Tema Oscuro"
     tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Tema Oscuro"], horizontal=True)
     st.markdown("---")
 
 # Lógica de Colores
 if tema == "🌞 Claro":
-    # TEMA CLARO (Igual que antes)
+    # TEMA CLARO
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
@@ -68,18 +66,15 @@ if tema == "🌞 Claro":
     c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    # TEMA OSCURO (NUEVO COLOR MARRÓN MÁS SUAVE)
-    # Antes era #1E1611 (Casi negro), ahora es #3E2F28 (Madera oscura)
+    # TEMA OSCURO (MARRÓN CHOCOLATE SUAVE)
     c_bg_app = "#3E2F28"      
     c_text_main = "#FFFFFF"   
-    c_sidebar = "#4E3B32"     # Barra lateral un poco más clara para contraste
+    c_sidebar = "#4E3B32"     
     c_sidebar_text = "#FFFFFF" 
-    c_caja_chat = "#5D473D"   # Cajas del chat un poco más claras
-    
-    c_input_bg = "#FFF8E7"    # Mantenemos papel crema para leer bien
+    c_caja_chat = "#5D473D"   
+    c_input_bg = "#FFF8E7"    
     c_input_text = "#3E2F28"  
     c_placeholder = "#555555" 
-    
     c_btn_bg = "#F4D03F"      
     c_btn_text = "#1E1611"    
     c_border = "#F4D03F"
@@ -106,14 +101,14 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. CONEXIÓN ---
+# --- 5. CONEXIÓN ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 5. MENÚ LATERAL ---
+# --- 6. MENÚ LATERAL ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -132,18 +127,21 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 6. FUNCIÓN DE ENCABEZADO ---
+# --- 7. FUNCIÓN DE ENCABEZADO (AHORA SÍ, SIN BOTONES) ---
 def crear_encabezado(titulo_texto):
+    # Columnas equilibradas
     c_texto, c_logo = st.columns([0.85, 0.15]) 
     
     with c_texto:
+        # Título limpio
         st.markdown(f"<h1 style='border-bottom: 2px solid #F4D03F; padding-bottom: 10px;'>{titulo_texto}</h1>", unsafe_allow_html=True)
         
     with c_logo:
-        if os.path.exists("logo.png"):
-            st.image("logo.png", use_column_width=True)
+        # AQUÍ ESTABA EL ERROR ANTES. AHORA USAMOS LA FUNCIÓN SEGURA.
+        # "100%" significa que ocupe todo el ancho de su columna pequeña
+        imagen_segura("logo.png", "100%")
 
-# --- 7. LÓGICA PRINCIPAL ---
+# --- 8. LÓGICA PRINCIPAL ---
 
 # MODO 1: ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
