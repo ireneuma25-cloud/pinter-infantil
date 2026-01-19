@@ -297,3 +297,4 @@ elif modo == "📖 Cuentacuentos":
                 tts.write_to_fp(bio)
                 st.audio(bio, format='audio/mp3')
             except Exception as e: caja.error(f"Error: {e}")
+
