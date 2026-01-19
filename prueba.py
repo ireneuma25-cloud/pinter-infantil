@@ -2,7 +2,8 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
-import random  # <--- NUEVO: Para hacer sorteos
+import random
+import json # <--- Necesario para guardar los datos
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
@@ -15,8 +16,9 @@ st.markdown("""
     h1 { color: #4A4A4A; border-bottom: 2px solid #F4D03F; padding-bottom: 10px; }
     .stChatMessage { background-color: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 12px; }
     section[data-testid="stSidebar"] { background-color: #F9F5EB; border-right: 1px solid #E0DND0; }
-    /* Estilo para los nombres de la lista */
-    .stCheckbox { background-color: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #EEE; margin-bottom: 5px; }
+    
+    /* Estilo Medallero */
+    .stMetric { background-color: #FFF; padding: 10px; border-radius: 10px; border: 1px solid #DDD; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -30,17 +32,13 @@ except Exception as e:
 # --- 4. MENÚ LATERAL ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
-    # AÑADIMOS LA NUEVA OPCIÓN AQUÍ:
-    modo = st.radio("Elige opción:", ["📝 Asamblea y Lista", "👩‍🏫 Asistente de Aula", "📖 Cuentacuentos"])
+    modo = st.radio("Elige opción:", ["⭐ Medallero Semanal", "📝 Asamblea y Lista", "👩‍🏫 Asistente de Aula", "📖 Cuentacuentos"])
     st.markdown("---")
     
     if st.button("💾 Descargar Chat"):
         texto = ""
         if "chat_general" in st.session_state:
             for m in st.session_state.chat_general:
-                texto += f"{m['role']}: {m['content']}\n"
-        elif "chat_cuentos" in st.session_state:
-            for m in st.session_state.chat_cuentos:
                 texto += f"{m['role']}: {m['content']}\n"
         
         if texto:
@@ -49,122 +47,142 @@ with st.sidebar:
 # --- 5. LÓGICA PRINCIPAL ---
 
 # ==========================================
-# NUEVO MODO: ASAMBLEA Y LISTA
+# MODO: MEDALLERO (NUEVO)
 # ==========================================
-if modo == "📝 Asamblea y Lista":
+if modo == "⭐ Medallero Semanal":
+    st.title("⭐ Medallero de la Clase")
+    st.info("Usa este panel para premiar el buen comportamiento.")
+
+    # 1. Configuración de alumnos para el medallero
+    if "puntos_alumnos" not in st.session_state:
+        # Iniciamos con 0 puntos
+        nombres = ["Lucas", "Sofía", "Mateo", "Valentina", "Hugo", "Martín"]
+        st.session_state.puntos_alumnos = {nombre: 0 for nombre in nombres}
+
+    # 2. Sistema de Guardado / Cargado (EL TRUCO)
+    with st.expander("💾 GUARDAR / CARGAR PUNTOS (Haz esto el viernes)", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Para GUARDAR:**")
+            # Convertimos los puntos a texto
+            codigo_guardado = json.dumps(st.session_state.puntos_alumnos)
+            st.code(codigo_guardado, language="json")
+            st.caption("Copia este código y guárdalo en tus notas.")
+        
+        with c2:
+            st.markdown("**Para CARGAR:**")
+            codigo_carga = st.text_input("Pega aquí el código guardado:")
+            if st.button("🔄 Recuperar Puntos"):
+                try:
+                    st.session_state.puntos_alumnos = json.loads(codigo_carga)
+                    st.success("¡Puntos recuperados!")
+                    st.rerun()
+                except:
+                    st.error("El código no es válido.")
+
+    st.markdown("---")
+
+    # 3. Panel de Estrellas
+    cols = st.columns(3)
+    idx = 0
+    
+    for nombre, estrellas in st.session_state.puntos_alumnos.items():
+        with cols[idx % 3]:
+            st.subheader(f"👤 {nombre}")
+            
+            # Mostramos las estrellas visualmente
+            st.markdown(f"### {'⭐' * estrellas}")
+            if estrellas == 0:
+                st.caption("Sin estrellas aún")
+            
+            # Botones
+            b1, b2 = st.columns(2)
+            if b1.button(f"➕", key=f"mas_{nombre}"):
+                st.session_state.puntos_alumnos[nombre] += 1
+                st.rerun()
+            
+            if b2.button(f"➖", key=f"menos_{nombre}"):
+                if st.session_state.puntos_alumnos[nombre] > 0:
+                    st.session_state.puntos_alumnos[nombre] -= 1
+                    st.rerun()
+            
+            st.markdown("---")
+        idx += 1
+
+# ==========================================
+# MODO: ASAMBLEA
+# ==========================================
+elif modo == "📝 Asamblea y Lista":
     st.title("📝 Control de Asamblea")
     
     col1, col2 = st.columns([1, 2])
-
     with col1:
         st.subheader("📋 Configurar Clase")
-        # Lista por defecto (puedes cambiarla en la web)
-        default_alumnos = "Lucas, Sofía, Mateo, Valentina, Hugo, Martín, Lucía, Leo"
-        texto_alumnos = st.text_area("Escribe los nombres (separados por comas):", value=default_alumnos, height=150)
-        
-        # Convertimos el texto en una lista real
-        lista_bruta = texto_alumnos.split(",")
-        lista_limpia = [nombre.strip() for nombre in lista_bruta if nombre.strip() != ""]
+        default = "Lucas, Sofía, Mateo, Valentina, Hugo, Martín"
+        texto = st.text_area("Nombres:", value=default, height=150)
+        lista = [n.strip() for n in texto.split(",") if n.strip()]
 
     with col2:
-        st.subheader("✅ ¿Quién ha venido hoy?")
-        
-        # Aquí guardamos quién está presente
+        st.subheader("✅ Asistencia")
         presentes = []
-        
-        # Creamos columnas para que los nombres no salgan en una fila eterna
         cols_lista = st.columns(3)
-        
-        for i, alumno in enumerate(lista_limpia):
-            # Usamos matemáticas para repartir los nombres en 3 columnas
-            col_actual = cols_lista[i % 3]
-            if col_actual.checkbox(f"👤 {alumno}", value=True, key=alumno):
-                presentes.append(alumno)
-        
-        st.info(f"Asistencia: **{len(presentes)}** de {len(lista_limpia)} alumnos.")
+        for i, al in enumerate(lista):
+            if cols_lista[i % 3].checkbox(f"👤 {al}", value=True, key=al):
+                presentes.append(al)
+        st.info(f"Asistencia: {len(presentes)} / {len(lista)}")
 
     st.markdown("---")
-    st.subheader("🎡 La Ruleta Mágica")
-    
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        if st.button("🌟 Elegir ENCARGADO"):
-            if presentes:
-                elegido = random.choice(presentes)
-                st.balloons() # ¡Efecto de globos!
-                st.success(f"## ¡El encargado es: {elegido}! 👑")
-            else:
-                st.warning("¡No hay nadie en clase!")
-
-    with c2:
-        if st.button("🗣️ Pregunta sorpresa"):
-            if presentes:
-                elegido = random.choice(presentes)
-                st.info(f"## ¿Qué opina: {elegido}? 🎤")
-
-    with c3:
-        if st.button("🧹 Equipo de limpieza"):
-            if len(presentes) >= 2:
-                equipo = random.sample(presentes, 2)
-                st.warning(f"## Ayudan hoy: {equipo[0]} y {equipo[1]} 🧽")
-            else:
-                st.error("Faltan alumnos para hacer equipo.")
+    if st.button("🌟 Elegir ENCARGADO"):
+        if presentes:
+            elegido = random.choice(presentes)
+            st.balloons()
+            st.success(f"## ¡El encargado es: {elegido}! 👑")
 
 # ==========================================
-# MODO ASISTENTE (Igual que antes)
+# MODO: ASISTENTE
 # ==========================================
 elif modo == "👩‍🏫 Asistente de Aula":
     st.title("👩‍🏫 Asistente General")
-    
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
     for m in st.session_state.chat_general:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if pregunta := st.chat_input("Escribe aquí tu consulta..."):
+    if pregunta := st.chat_input("Consulta..."):
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
         with st.chat_message("user"): st.markdown(pregunta)
-        
         with st.chat_message("assistant"):
             caja = st.empty()
             try:
                 res = model.generate_content(pregunta)
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
-            except Exception as e:
-                caja.error(f"Error: {e}")
+            except Exception as e: caja.error(f"Error: {e}")
 
 # ==========================================
-# MODO CUENTACUENTOS (Igual que antes)
+# MODO: CUENTACUENTOS
 # ==========================================
 elif modo == "📖 Cuentacuentos":
     st.title("📖 La Hora del Cuento")
-    
     if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
 
     for m in st.session_state.chat_cuentos:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if tema := st.chat_input("¿De qué quieres el cuento?"):
+    if tema := st.chat_input("Tema del cuento..."):
         st.session_state.chat_cuentos.append({"role": "user", "content": tema})
         with st.chat_message("user"): st.markdown(tema)
-        
         with st.chat_message("assistant"):
             caja = st.empty()
-            caja.write("✨ Escribiendo historia...")
+            caja.write("✨ Escribiendo...")
             try:
-                prompt = f"Cuento infantil corto sobre: {tema}."
-                res = model.generate_content(prompt)
-                
+                res = model.generate_content(f"Cuento infantil corto sobre: {tema}")
                 caja.markdown(res.text)
                 st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
                 
-                # Audio
-                texto_limpio = res.text.replace("*", "").replace("#", "")
-                tts = gTTS(text=texto_limpio, lang='es')
-                audio_bytes = io.BytesIO()
-                tts.write_to_fp(audio_bytes)
-                st.audio(audio_bytes, format='audio/mp3')
-            except Exception as e:
-                caja.error(f"Error: {e}")
+                txt = res.text.replace("*", "").replace("#", "")
+                tts = gTTS(text=txt, lang='es')
+                bio = io.BytesIO()
+                tts.write_to_fp(bio)
+                st.audio(bio, format='audio/mp3')
+            except Exception as e: caja.error(f"Error: {e}")
