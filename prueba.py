@@ -46,15 +46,13 @@ st.markdown("""
 # --- 4. GESTIÓN DEL TEMA Y LOGO LATERAL ---
 with st.sidebar:
     # === LOGO MENÚ ===
-    # CAMBIO 1: Antes era "100%", ahora "85%" para que sea más pequeño
     imagen_segura("logo1.png", "85%") 
     
     st.write("") 
     # Selector de tema
     tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
     
-    # CAMBIO 2: LÍNEA SEPARADORA PEGADITA ARRIBA
-    # Usamos HTML con margin-top negativo (-15px) para subirla
+    # LÍNEA 1 (Compacta)
     st.markdown("""
         <hr style='margin-top: -15px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
     """, unsafe_allow_html=True)
@@ -121,7 +119,11 @@ with st.sidebar:
         "📖 Cuentacuentos"
     ])
     
-    st.markdown("---")
+    # CAMBIO: LÍNEA 2 (Compacta también aquí)
+    st.markdown("""
+        <hr style='margin-top: -15px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>
+    """, unsafe_allow_html=True)
+    
     if st.button("💾 Descargar Chat"):
         texto = ""
         if "chat_general" in st.session_state:
