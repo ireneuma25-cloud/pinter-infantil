@@ -8,84 +8,108 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. GESTIÓN DEL TEMA (SOLUCIÓN ALTO CONTRASTE) ---
+# --- 2. GESTIÓN DEL TEMA ---
 with st.sidebar:
     st.title("🧸 Menú Pinter")
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
 
-# Definir Colores y Estilos CSS
+# Lógica de Colores
 if tema == "🌞 Claro":
     # TEMA CLARO
-    c_fondo = "#FDFBF7"
-    c_texto = "#4A4A4A"
+    c_bg_app = "#FDFBF7"
+    c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
-    c_caja = "#FFFFFF" # Cajas del chat
-    c_input_bg = "#FFFFFF" # Fondo donde escribes
-    c_input_text = "#4A4A4A" # Color de lo que escribes
-    c_boton = "#F0F0F0"
-    c_boton_text = "#000000"
-    c_borde = "#DDDDDD"
+    c_sidebar_text = "#4A4A4A" # Texto oscuro en menú claro
+    c_caja_chat = "#FFFFFF"
+    
+    # Inputs (Cajas de escribir)
+    c_input_bg = "#FFFFFF" 
+    c_input_text = "#000000"
+    c_placeholder = "#666666" 
+    
+    # Botones
+    c_btn_bg = "#F0F0F0"
+    c_btn_text = "#000000"
+    c_border = "#DDDDDD"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
     
 else:
-    # TEMA CHOCOLATE (ESTILO "PAPEL SOBRE MADERA")
-    c_fondo = "#1E1611"       # Fondo muy oscuro
-    c_texto = "#FFFFFF"       # Textos generales en blanco
-    c_sidebar = "#2B2118"     # Menú oscuro
-    c_caja = "#3E2F26"        # Cajas del chat oscuras
+    # TEMA CHOCOLATE (ALTO CONTRASTE MENU)
+    c_bg_app = "#1E1611"      
+    c_text_main = "#FFFFFF"   
+    c_sidebar = "#2B2118"     
+    c_sidebar_text = "#FFFFFF" # <--- BLANCO PURO PARA EL MENÚ
+    c_caja_chat = "#3E2F26"   
     
-    # AQUÍ ESTÁ EL TRUCO PARA QUE SE LEA:
-    c_input_bg = "#FFF8E7"    # Las cajas de escribir serán CLARAS (Crema)
-    c_input_text = "#1E1611"  # La letra al escribir será OSCURA
+    # Cajas de escribir (Estilo Papel)
+    c_input_bg = "#FFF8E7"    
+    c_input_text = "#1E1611"  
+    c_placeholder = "#555555" 
     
-    c_boton = "#F4D03F"       # Botones DORADOS brillantes
-    c_boton_text = "#1E1611"  # Texto botón oscuro
-    c_borde = "#F4D03F"       # Bordes dorados para resaltar
+    # Botones
+    c_btn_bg = "#F4D03F"      
+    c_btn_text = "#1E1611"    
+    c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectar CSS (REVISADO PARA VISIBILIDAD)
+# Inyectamos el CSS CORREGIDO
 st.markdown(f"""
 <style>
-    html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_texto}; }}
-    .stApp {{ background-color: {c_fondo}; background-image: {img_fondo}; }}
+    /* 1. Fuente y Colores Generales */
+    html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
+    .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
     
-    /* Títulos */
-    h1, h2, h3, h4 {{ color: {c_texto} !important; border-bottom: 2px solid #F4D03F; }}
-    label, .stMarkdown p {{ color: {c_texto} !important; }}
-
-    /* BARRA LATERAL (Flechas e iconos visibles) */
-    section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_borde}; }}
-    button[kind="header"] {{ color: {c_texto} !important; }}
-    span[data-testid="stArrow"] {{ color: {c_texto} !important; }}
-
-    /* CAJAS DE CHAT (Mantienen el estilo del tema) */
-    .stChatMessage {{ background-color: {c_caja}; border: 1px solid {c_borde}; border-radius: 12px; }}
-    .stMetric, .stCheckbox {{ background-color: {c_caja}; color: {c_texto}; padding: 10px; border-radius: 10px; border: 1px solid {c_borde}; }}
-    
-    /* INPUTS (CAJAS DE TEXTO) - ALTO CONTRASTE */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ 
-        background-color: {c_input_bg} !important; 
-        color: {c_input_text} !important; 
-        border: 2px solid {c_borde} !important;
-        font-weight: 500;
+    /* 2. BARRA LATERAL (EL ARREGLO IMPORTANTE) */
+    section[data-testid="stSidebar"] {{ 
+        background-color: {c_sidebar}; 
+        border-right: 1px solid {c_border}; 
     }}
-    /* El texto de ejemplo (placeholder) ahora será gris oscuro sobre fondo claro -> SE VE BIEN */
-    ::placeholder {{ color: #888888 !important; opacity: 1; }}
     
-    /* BOTONES (Muy visibles) */
+    /* ESTO ES LO NUEVO: Forzamos que TODO el texto del menú sea del color elegido (Blanco en oscuro) */
+    section[data-testid="stSidebar"] .stRadio label, 
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] div {{
+        color: {c_sidebar_text} !important;
+        font-weight: 500 !important; /* Un poco más gordita la letra */
+    }}
+
+    /* Flechas e iconos del menú */
+    button[kind="header"] {{ color: {c_sidebar_text} !important; }}
+    span[data-testid="stArrow"] {{ color: {c_sidebar_text} !important; }}
+
+    /* 3. Títulos */
+    h1, h2, h3, h4 {{ color: {c_text_main} !important; border-bottom: 2px solid #F4D03F; }}
+    label, p, .stMarkdown {{ color: {c_text_main} !important; }}
+
+    /* 4. CAJAS DE TEXTO (INPUTS) - Estilo Papel */
+    input[type="text"], textarea, .stTextArea textarea, .stTextInput input {{
+        background-color: {c_input_bg} !important;
+        color: {c_input_text} !important;
+        border: 2px solid {c_border} !important;
+    }}
+    
+    ::placeholder {{
+        color: {c_placeholder} !important;
+        opacity: 1 !important;
+    }}
+    
+    /* 5. BOTONES */
     .stButton > button {{
-        background-color: {c_boton} !important;
-        color: {c_boton_text} !important;
-        border: 1px solid {c_borde} !important;
-        font-weight: bold;
-        transition: all 0.3s;
+        background-color: {c_btn_bg} !important;
+        color: {c_btn_text} !important;
+        border: 1px solid {c_text_main} !important;
+        font-weight: bold !important;
     }}
     .stButton > button:hover {{
+        filter: brightness(115%);
         transform: scale(1.02);
-        filter: brightness(110%);
-        border-color: #FFFFFF !important;
     }}
+
+    /* 6. Cajas de Chat */
+    .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; border-radius: 12px; }}
+    .stMetric, .stCheckbox {{ background-color: {c_caja_chat}; color: {c_text_main}; padding: 10px; border-radius: 10px; border: 1px solid {c_border}; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -145,13 +169,14 @@ elif modo == "✍️ Redactor de Informes":
     col1, col2 = st.columns(2)
     
     with col1:
-        nombre_alumno = st.text_input("Nombre del alumno/a:", placeholder="Ej: Lucas")
+        nombre_alumno = st.text_input("Nombre del alumno/a:", placeholder="Ej: Lucas (Escribe aquí)")
         puntos_clave = st.text_area("Puntos clave:", 
                                    placeholder="Ej: come bien, pega a los compañeros, sabe los colores...",
                                    height=150)
         
         tono = st.select_slider("Tono del mensaje:", options=["Muy Formal", "Cercano y Amable", "Muy Cariñoso"], value="Cercano y Amable")
         
+        st.write("")
         if st.button("✨ Generar Informe"):
             if nombre_alumno and puntos_clave:
                 prompt_informe = f"""
