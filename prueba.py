@@ -9,42 +9,19 @@ import os
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. ELIMINAR BOTONES DE PANTALLA COMPLETA (CSS FUERTE) ---
-st.markdown("""
-<style>
-    /* 1. Esto hace que el ratón ignore las imágenes (No se pueden clicar) */
-    img {
-        pointer-events: none !important;
-        user-select: none !important;
-        -webkit-user-drag: none !important;
-    }
-    
-    /* 2. Esto OCULTA ESPECÍFICAMENTE el botón de ampliar (Fullscreen) */
-    [data-testid="StyledFullScreenButton"] {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-    }
-    div[data-testid="stImage"] button {
-        display: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 3. GESTIÓN DEL TEMA Y LOGO LATERAL ---
+# --- 2. GESTIÓN DEL TEMA Y LOGO PRINCIPAL (MENÚ LATERAL) ---
 with st.sidebar:
-    # === LOGO NUEVO EN EL MENÚ (logo1.png) ===
+    # === LOGO NUEVO (logo1.png) ===
     if os.path.exists("logo1.png"):
-        # Centrado y limpio
-        c1, c2, c3 = st.columns([0.2, 2, 0.2]) 
+        # Muestra el logo centrado y SIN TÍTULO DEBAJO
+        c1, c2, c3 = st.columns([0.5, 2, 0.5]) # Ajuste para centrar mejor
         with c2:
-            st.image("logo1.png", use_column_width=True) 
+            st.image("logo1.png", width=180) # Un pelín más grande si quieres
     else:
-        st.warning("⚠️ Sube 'logo1.png'")
+        st.warning("⚠️ Faltan archivos: Sube 'logo1.png'")
         st.markdown("---")
     
-    # Espacio para separar
-    st.write("") 
+    # HE BORRADO EL TÍTULO "MENÚ PINTER" PARA QUE SUBA EL LOGO
     
     tema = st.radio("Apariencia:", ["🌞 Claro", "🐻 Chocolate"], horizontal=True)
     st.markdown("---")
@@ -80,11 +57,17 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'none'
 
-# Inyectamos el CSS de diseño
+# Inyectamos el CSS (AQUÍ ESTÁ EL TRUCO ANTI-CLIC)
 st.markdown(f"""
 <style>
     html, body, [class*="css"] {{ font-family: 'Times New Roman', serif; color: {c_text_main}; }}
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
+    
+    /* TRUCO PARA QUE LAS IMÁGENES NO SE PUEDAN CLICAR NI AMPLIAR */
+    img {{
+        pointer-events: none; /* Esto hace que el ratón "ignore" la imagen */
+        user-select: none;
+    }}
     
     /* Estilos del Menú */
     section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }}
@@ -107,22 +90,22 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. LOGO ESQUINA SUPERIOR DERECHA (MÁS GRANDE) ---
-# Creamos columnas: una grande vacía a la izquierda, y una a la derecha para el logo
-c_main, c_corner_logo = st.columns([0.8, 0.2]) 
+# --- 3. LOGO ESQUINA SUPERIOR DERECHA (MÁS GRANDE) ---
+# Hemos cambiado las columnas: Ahora la del logo (derecha) es más ancha (ratio 2)
+c_main, c_corner_logo = st.columns([8, 2]) 
 with c_corner_logo:
     if os.path.exists("logo.png"):
-        # Logo antiguo, ahora un poco más grande (width=160 antes era 70)
-        st.image("logo.png", width=160)
+        # Lo ponemos a la derecha del todo y más grande (width=130)
+        st.image("logo.png", width=130) 
 
-# --- 5. CONEXIÓN ---
+# --- 4. CONEXIÓN ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 6. MENÚ LATERAL ---
+# --- 5. MENÚ LATERAL ---
 with st.sidebar:
     modo = st.radio("Herramientas:", [
         "👩‍🏫 Asistente de Aula", 
@@ -142,7 +125,7 @@ with st.sidebar:
         if texto:
             st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 7. LÓGICA PRINCIPAL ---
+# --- 6. LÓGICA PRINCIPAL ---
 
 # MODO 1: ASISTENTE
 if modo == "👩‍🏫 Asistente de Aula":
@@ -284,7 +267,7 @@ elif modo == "📖 Cuentacuentos":
             try:
                 res = model.generate_content(f"Cuento infantil corto sobre: {tema}")
                 caja.markdown(res.text)
-                st.session_state.chat_general.append({"role": "assistant", "content": res.text}) # Corregido para que guarde el cuento
+                st.session_state.chat_general.append({"role": "assistant", "content": res.text}) # Corrección menor en lógica
                 
                 txt = res.text.replace("*", "").replace("#", "")
                 tts = gTTS(text=txt, lang='es')
