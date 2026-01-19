@@ -8,176 +8,39 @@ import json
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="🧸", layout="wide")
 
-# --- 2. DISEÑO ---
-st.markdown("""
-<style>
-    html, body, [class*="css"] { font-family: 'Times New Roman', Times, serif; }
-    .stApp { background-color: #FDFBF7; background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png"); }
-    h1 { color: #4A4A4A; border-bottom: 2px solid #F4D03F; padding-bottom: 10px; }
-    .stChatMessage { background-color: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 12px; }
-    section[data-testid="stSidebar"] { background-color: #F9F5EB; border-right: 1px solid #E0DND0; }
-    .stMetric { background-color: #FFF; padding: 10px; border-radius: 10px; border: 1px solid #DDD; text-align: center; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 3. CONEXIÓN ---
-try:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-flash-latest')
-except Exception as e:
-    st.error(f"Error de conexión: {e}")
-
-# --- 4. MENÚ LATERAL ---
+# --- 2. GESTIÓN DEL TEMA (CLARO / OSCURO) ---
+# Esto va al principio para aplicar los colores antes de pintar nada
 with st.sidebar:
     st.title("🧸 Menú Pinter")
     
-    # CAMBIO 1: El Asistente ahora es el primero de la lista
-    modo = st.radio("Elige opción:", [
-        "👩‍🏫 Asistente de Aula", 
-        "⭐ Medallero Semanal", 
-        "📝 Asamblea y Lista", 
-        "📖 Cuentacuentos"
-    ])
-    
+    # Selector de Tema
+    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
     st.markdown("---")
-    
-    if st.button("💾 Descargar Chat"):
-        texto = ""
-        if "chat_general" in st.session_state:
-            for m in st.session_state.chat_general:
-                texto += f"{m['role']}: {m['content']}\n"
-        
-        if texto:
-            st.download_button("📥 Bajar archivo", texto, "pinter.txt")
 
-# --- 5. LÓGICA PRINCIPAL ---
+# Definimos los colores según el tema elegido
+if tema == "🌞 Claro":
+    # Colores TEMA CLARO (Original)
+    color_fondo = "#FDFBF7"
+    color_texto = "#4A4A4A"
+    color_sidebar = "#F9F5EB"
+    color_caja = "#FFFFFF"
+    color_borde = "#F0F0F0"
+    imagen_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
+else:
+    # Colores TEMA OSCURO (Elegante)
+    color_fondo = "#1A1C24"       # Gris oscuro azulado (mejor que negro puro)
+    color_texto = "#E0E0E0"       # Blanco suave
+    color_sidebar = "#262730"     # Gris un poco más claro para el menú
+    color_caja = "#31333F"        # Fondo de las tarjetas y chats
+    color_borde = "#414452"       # Bordes sutiles
+    imagen_fondo = 'none'         # Sin textura de papel en modo oscuro
 
-# ==========================================
-# MODO 1: ASISTENTE (AHORA ES EL PRIMERO)
-# ==========================================
-if modo == "👩‍🏫 Asistente de Aula":
-    st.title("👩‍🏫 Asistente General")
-    if "chat_general" not in st.session_state: st.session_state.chat_general = []
-    
-    for m in st.session_state.chat_general:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if pregunta := st.chat_input("Consulta..."):
-        st.session_state.chat_general.append({"role": "user", "content": pregunta})
-        with st.chat_message("user"): st.markdown(pregunta)
-        with st.chat_message("assistant"):
-            caja = st.empty()
-            try:
-                res = model.generate_content(pregunta)
-                caja.markdown(res.text)
-                st.session_state.chat_general.append({"role": "assistant", "content": res.text})
-            except Exception as e: caja.error(f"Error: {e}")
-
-# ==========================================
-# MODO 2: MEDALLERO
-# ==========================================
-elif modo == "⭐ Medallero Semanal":
-    st.title("⭐ Medallero de la Clase")
-    st.info("Sistema de puntos y recompensas.")
-
-    if "puntos_alumnos" not in st.session_state:
-        nombres = ["Lucas", "Sofía", "Mateo", "Valentina", "Hugo", "Martín"]
-        st.session_state.puntos_alumnos = {nombre: 0 for nombre in nombres}
-
-    # CAMBIO 2: Texto actualizado para recordar guardar siempre
-    with st.expander("💾 GUARDAR / CARGAR PUNTOS (Haz esto SIEMPRE antes de cerrar)", expanded=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("**Para GUARDAR:**")
-            codigo_guardado = json.dumps(st.session_state.puntos_alumnos)
-            st.code(codigo_guardado, language="json")
-            st.caption("⚠️ Copia esto antes de cerrar la pestaña.")
-        
-        with c2:
-            st.markdown("**Para CARGAR:**")
-            codigo_carga = st.text_input("Pega aquí el código guardado:")
-            if st.button("🔄 Recuperar Puntos"):
-                try:
-                    st.session_state.puntos_alumnos = json.loads(codigo_carga)
-                    st.success("¡Puntos recuperados!")
-                    st.rerun()
-                except:
-                    st.error("El código no es válido.")
-
-    st.markdown("---")
-    cols = st.columns(3)
-    idx = 0
-    for nombre, estrellas in st.session_state.puntos_alumnos.items():
-        with cols[idx % 3]:
-            st.subheader(f"👤 {nombre}")
-            st.markdown(f"### {'⭐' * estrellas}")
-            if estrellas == 0: st.caption("Sin estrellas")
-            
-            b1, b2 = st.columns(2)
-            if b1.button(f"➕", key=f"mas_{nombre}"):
-                st.session_state.puntos_alumnos[nombre] += 1
-                st.rerun()
-            if b2.button(f"➖", key=f"menos_{nombre}"):
-                if st.session_state.puntos_alumnos[nombre] > 0:
-                    st.session_state.puntos_alumnos[nombre] -= 1
-                    st.rerun()
-            st.markdown("---")
-        idx += 1
-
-# ==========================================
-# MODO 3: ASAMBLEA
-# ==========================================
-elif modo == "📝 Asamblea y Lista":
-    st.title("📝 Control de Asamblea")
-    
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        st.subheader("📋 Configurar Clase")
-        default = "Lucas, Sofía, Mateo, Valentina, Hugo, Martín"
-        texto = st.text_area("Nombres:", value=default, height=150)
-        lista = [n.strip() for n in texto.split(",") if n.strip()]
-
-    with col2:
-        st.subheader("✅ Asistencia")
-        presentes = []
-        cols_lista = st.columns(3)
-        for i, al in enumerate(lista):
-            if cols_lista[i % 3].checkbox(f"👤 {al}", value=True, key=al):
-                presentes.append(al)
-        st.info(f"Asistencia: {len(presentes)} / {len(lista)}")
-
-    st.markdown("---")
-    if st.button("🌟 Elegir ENCARGADO"):
-        if presentes:
-            elegido = random.choice(presentes)
-            st.balloons()
-            st.success(f"## ¡El encargado es: {elegido}! 👑")
-
-# ==========================================
-# MODO 4: CUENTACUENTOS
-# ==========================================
-elif modo == "📖 Cuentacuentos":
-    st.title("📖 La Hora del Cuento")
-    if "chat_cuentos" not in st.session_state: st.session_state.chat_cuentos = []
-
-    for m in st.session_state.chat_cuentos:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if tema := st.chat_input("Tema del cuento..."):
-        st.session_state.chat_cuentos.append({"role": "user", "content": tema})
-        with st.chat_message("user"): st.markdown(tema)
-        with st.chat_message("assistant"):
-            caja = st.empty()
-            caja.write("✨ Escribiendo...")
-            try:
-                res = model.generate_content(f"Cuento infantil corto sobre: {tema}")
-                caja.markdown(res.text)
-                st.session_state.chat_cuentos.append({"role": "assistant", "content": res.text})
-                
-                txt = res.text.replace("*", "").replace("#", "")
-                tts = gTTS(text=txt, lang='es')
-                bio = io.BytesIO()
-                tts.write_to_fp(bio)
-                st.audio(bio, format='audio/mp3')
-            except Exception as e: caja.error(f"Error: {e}")
-
+# Aplicamos el CSS Dinámico
+estilo_css = f"""
+<style>
+    html, body, [class*="css"] {{ font-family: 'Times New Roman', Times, serif; color: {color_texto}; }}
+    .stApp {{ 
+        background-color: {color_fondo}; 
+        background-image: {imagen_fondo}; 
+    }}
+    h1, h2, h3 {{ color: {color_texto} !important; border-bottom: 2px solid #F4D03F; padding-bottom:
