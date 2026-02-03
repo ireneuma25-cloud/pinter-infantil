@@ -19,34 +19,30 @@ def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
         """
         st.markdown(html, unsafe_allow_html=True)
 
-# --- 3. CSS PROFESIONAL (RESPONSIVE + ESTILO) ---
+# --- 3. CSS PROFESIONAL ---
 st.markdown("""
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
     img { pointer-events: none !important; }
     [data-testid="StyledFullScreenButton"] { display: none !important; }
     
-    /* Móvil: Ocultar logo esquina y centrar título */
     @media only screen and (max-width: 768px) {
         .logo-esquina { display: none !important; }
         h1 { text-align: center; }
     }
     
-    /* Cajas de resultados más bonitas */
     .stTextArea textarea { font-size: 16px !important; line-height: 1.5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BARRA LATERAL (DISEÑO Y TEMAS) ---
+# --- 4. BARRA LATERAL ---
 with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
     tema = st.radio("Apariencia:", ["Claro", "Oscuro"], horizontal=True)
-    
-    # Línea separadora compacta
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
 
-# Lógica de Colores (Diseño Aterciopelado)
+# Lógica de Colores
 if tema == "Claro":
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
@@ -93,20 +89,17 @@ try:
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 6. MENÚ DE HERRAMIENTAS (LIMPIO) ---
+# --- 6. MENÚ DE HERRAMIENTAS ---
 with st.sidebar:
-    # AQUÍ ESTÁN LAS NUEVAS HERRAMIENTAS PEDAGÓGICAS SIN EMOJIS
     modo = st.radio("Herramientas Docentes:", [
         "Traductor Pedagógico (LOMLOE)", 
         "Cuentos Terapéuticos",
         "Diseñador ABN & Retos",
         "Chat Asistente General"
     ])
-    
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
-    
     if st.button("Descargar Sesión"):
-        st.info("Función en mantenimiento (Pronto disponible)")
+        st.info("Función en mantenimiento")
 
 # --- 7. HEADER ---
 def crear_encabezado(titulo):
@@ -126,26 +119,21 @@ if modo == "Traductor Pedagógico (LOMLOE)":
     c1, c2 = st.columns(2)
     with c1:
         observacion = st.text_area("¿Qué ha pasado? (Lenguaje normal):", 
-                                   placeholder="Ej: Hoy Juanito le ha quitado el juguete a María y cuando le he reñido se ha puesto a llorar y a patalear.",
-                                   height=150)
+                                   placeholder="Ej: Hoy Juanito le ha quitado el juguete a María...", height=150)
         contexto = st.text_input("Contexto del alumno (Opcional):", placeholder="Ej: 4 años, posible retraso madurativo.")
         
         if st.button("Generar Informe Profesional"):
             if observacion:
                 prompt = f"""
-                Actúa como una experta en Pedagogía y legislación educativa (LOMLOE).
-                Tengo esta observación de aula en lenguaje coloquial: "{observacion}".
-                Contexto: {contexto}.
-                
-                Redacta un párrafo para un informe oficial. 
-                - Usa terminología técnica (regulación emocional, habilidades sociales, tolerancia a la frustración).
-                - Mantén un tono objetivo y profesional.
-                - No inventes datos, solo traduce lo que te he dicho.
+                Actúa como experta en Pedagogía y LOMLOE.
+                Traduce esta observación: "{observacion}" (Contexto: {contexto}) a lenguaje técnico para un informe oficial.
+                Sé objetiva y profesional.
                 """
                 with st.spinner("Consultando manuales pedagógicos..."):
                     try:
                         res = model.generate_content(prompt)
-                        st.session_state.resultado_traductor = res.text
+                        # AQUÍ ESTÁ EL ARREGLO: .replace("*", "") limpia los asteriscos
+                        st.session_state.resultado_traductor = res.text.replace("*", "")
                     except Exception as e: st.error(f"Error: {e}")
     
     with c2:
@@ -157,37 +145,28 @@ if modo == "Traductor Pedagógico (LOMLOE)":
 # === HERRAMIENTA 2: CUENTOS TERAPÉUTICOS ===
 elif modo == "Cuentos Terapéuticos":
     crear_encabezado("Cuentos de Neuroeducación")
-    st.info("Crea historias personalizadas para gestionar emociones y conflictos específicos.")
+    st.info("Crea historias personalizadas para gestionar emociones.")
     
     col_input, col_out = st.columns([1, 1])
-    
     with col_input:
-        problema = st.text_input("¿Qué queremos trabajar?", placeholder="Ej: Celos del hermano pequeño, miedo a la oscuridad...")
-        interes = st.text_input("¿Qué le gusta al niño/a?", placeholder="Ej: Los dinosaurios, el espacio, las princesas...")
+        problema = st.text_input("¿Qué queremos trabajar?", placeholder="Ej: Celos, miedos...")
+        interes = st.text_input("¿Qué le gusta al niño/a?", placeholder="Ej: Dinosaurios, princesas...")
         edad = st.select_slider("Edad del grupo:", options=["3 años", "4 años", "5 años"], value="4 años")
         
         if st.button("Escribir Cuento"):
             if problema and interes:
-                prompt = f"""
-                Escribe un cuento infantil corto para un niño de {edad}.
-                Objetivo terapéutico: Trabajar {problema}.
-                Tema principal: {interes}.
-                
-                Usa metáforas sencillas de neuroeducación para que el niño entienda su emoción.
-                El tono debe ser calmado, empático y con final positivo.
-                """
+                prompt = f"Escribe cuento infantil ({edad}) sobre {problema} usando {interes}. Tono terapéutico y positivo."
                 with st.spinner("Imaginando historia..."):
                     try:
                         res = model.generate_content(prompt)
-                        st.session_state.cuento_texto = res.text
-                        
-                        # Generar Audio
+                        # LIMPIEZA DE ASTERISCOS TAMBIÉN AQUÍ
                         texto_limpio = res.text.replace("*", "")
+                        st.session_state.cuento_texto = texto_limpio
+                        
                         tts = gTTS(text=texto_limpio, lang='es')
                         bio = io.BytesIO()
                         tts.write_to_fp(bio)
                         st.session_state.cuento_audio = bio
-                        
                     except Exception as e: st.error(f"Error: {e}")
     
     with col_out:
@@ -195,38 +174,29 @@ elif modo == "Cuentos Terapéuticos":
             st.subheader("Escuchar:")
             if "cuento_audio" in st.session_state:
                 st.audio(st.session_state.cuento_audio, format='audio/mp3')
-            
             st.subheader("Leer:")
+            # Usamos st.write para que se lea mejor (aunque sin negritas ahora)
             st.write(st.session_state.cuento_texto)
 
 
 # === HERRAMIENTA 3: DISEÑADOR ABN ===
 elif modo == "Diseñador ABN & Retos":
     crear_encabezado("Diseñador de Actividades ABN")
-    st.info("Genera actividades de matemáticas manipulativas basadas en el método ABN.")
+    st.info("Genera actividades de matemáticas manipulativas.")
     
     c1, c2 = st.columns(2)
     with c1:
-        objetivo = st.text_input("Objetivo Matemático:", placeholder="Ej: Conteo, amigos del 10, subitización...")
-        materiales = st.text_input("Materiales disponibles:", placeholder="Ej: Piñas, piedras, tapones, ceras...")
+        objetivo = st.text_input("Objetivo Matemático:", placeholder="Ej: Conteo, amigos del 10...")
+        materiales = st.text_input("Materiales disponibles:", placeholder="Ej: Piñas, piedras...")
         
         if st.button("Diseñar Actividad"):
             if objetivo:
-                prompt = f"""
-                Eres experta en el método ABN (Algoritmo Basado en Números) para Educación Infantil.
-                Diseña una actividad paso a paso.
-                Objetivo: {objetivo}.
-                Materiales: {materiales}.
-                
-                Estructura:
-                1. Asamblea (Introducción).
-                2. Desarrollo (Manipulación).
-                3. Cierre (Metacognición).
-                """
+                prompt = f"Diseña actividad ABN paso a paso. Objetivo: {objetivo}. Materiales: {materiales}."
                 with st.spinner("Diseñando reto matemático..."):
                     try:
                         res = model.generate_content(prompt)
-                        st.session_state.resultado_abn = res.text
+                        # LIMPIEZA DE ASTERISCOS
+                        st.session_state.resultado_abn = res.text.replace("*", "")
                     except Exception as e: st.error(f"Error: {e}")
 
     with c2:
@@ -234,7 +204,7 @@ elif modo == "Diseñador ABN & Retos":
             st.markdown(st.session_state.resultado_abn)
 
 
-# === HERRAMIENTA 4: CHAT GENERAL (EXTRA) ===
+# === HERRAMIENTA 4: CHAT GENERAL ===
 elif modo == "Chat Asistente General":
     crear_encabezado("Asistente Pedagógico")
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
@@ -242,13 +212,14 @@ elif modo == "Chat Asistente General":
     for m in st.session_state.chat_general:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if pregunta := st.chat_input("Pregunta sobre didáctica, dudas, ideas..."):
+    if pregunta := st.chat_input("Dudas, ideas, preguntas..."):
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
         with st.chat_message("user"): st.markdown(pregunta)
         with st.chat_message("assistant"):
             caja = st.empty()
             try:
-                res = model.generate_content(f"Actúa como maestra experta en infantil. {pregunta}")
+                res = model.generate_content(f"Actúa como maestra experta. {pregunta}")
+                # Aquí dejamos los asteriscos porque en el chat SÍ quedan bonitos (se ven negritas)
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e: caja.error(f"Error: {e}")
