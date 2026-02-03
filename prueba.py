@@ -41,13 +41,13 @@ st.markdown("""
 with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
-    tema = st.radio("Apariencia:", ["🌞 Claro", "🌙 Oscuro"], horizontal=True)
+    tema = st.radio("Apariencia:", ["Claro", "Oscuro"], horizontal=True)
     
     # Línea separadora compacta
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
 
 # Lógica de Colores (Diseño Aterciopelado)
-if tema == "🌞 Claro":
+if tema == "Claro":
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
     c_sidebar = "#F9F5EB"
@@ -93,19 +93,19 @@ try:
 except Exception as e:
     st.error(f"Error de conexión: {e}")
 
-# --- 6. MENÚ DE HERRAMIENTAS (EL GIRO MAESTRO) ---
+# --- 6. MENÚ DE HERRAMIENTAS (LIMPIO) ---
 with st.sidebar:
-    # AQUÍ ESTÁN LAS NUEVAS HERRAMIENTAS PEDAGÓGICAS
+    # AQUÍ ESTÁN LAS NUEVAS HERRAMIENTAS PEDAGÓGICAS SIN EMOJIS
     modo = st.radio("Herramientas Docentes:", [
-        "📄 Traductor Pedagógico (LOMLOE)", 
-        "🧠 Cuentos Terapéuticos",
-        "🔢 Diseñador ABN & Retos",
-        "👩‍🏫 Chat Asistente General"
+        "Traductor Pedagógico (LOMLOE)", 
+        "Cuentos Terapéuticos",
+        "Diseñador ABN & Retos",
+        "Chat Asistente General"
     ])
     
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
     
-    if st.button("💾 Descargar Sesión"):
+    if st.button("Descargar Sesión"):
         st.info("Función en mantenimiento (Pronto disponible)")
 
 # --- 7. HEADER ---
@@ -119,7 +119,7 @@ def crear_encabezado(titulo):
 # --- 8. LÓGICA DE LAS HERRAMIENTAS ---
 
 # === HERRAMIENTA 1: TRADUCTOR PEDAGÓGICO ===
-if modo == "📄 Traductor Pedagógico (LOMLOE)":
+if modo == "Traductor Pedagógico (LOMLOE)":
     crear_encabezado("Traductor a Lenguaje Técnico")
     st.info("Transforma observaciones cotidianas en informes profesionales listos para la administración.")
     
@@ -130,7 +130,7 @@ if modo == "📄 Traductor Pedagógico (LOMLOE)":
                                    height=150)
         contexto = st.text_input("Contexto del alumno (Opcional):", placeholder="Ej: 4 años, posible retraso madurativo.")
         
-        if st.button("✨ Generar Informe Profesional"):
+        if st.button("Generar Informe Profesional"):
             if observacion:
                 prompt = f"""
                 Actúa como una experta en Pedagogía y legislación educativa (LOMLOE).
@@ -149,13 +149,13 @@ if modo == "📄 Traductor Pedagógico (LOMLOE)":
                     except Exception as e: st.error(f"Error: {e}")
     
     with c2:
-        st.subheader("📝 Texto para el Informe:")
+        st.subheader("Texto para el Informe:")
         if "resultado_traductor" in st.session_state:
             st.text_area("Resultado:", value=st.session_state.resultado_traductor, height=250)
 
 
 # === HERRAMIENTA 2: CUENTOS TERAPÉUTICOS ===
-elif modo == "🧠 Cuentos Terapéuticos":
+elif modo == "Cuentos Terapéuticos":
     crear_encabezado("Cuentos de Neuroeducación")
     st.info("Crea historias personalizadas para gestionar emociones y conflictos específicos.")
     
@@ -166,7 +166,7 @@ elif modo == "🧠 Cuentos Terapéuticos":
         interes = st.text_input("¿Qué le gusta al niño/a?", placeholder="Ej: Los dinosaurios, el espacio, las princesas...")
         edad = st.select_slider("Edad del grupo:", options=["3 años", "4 años", "5 años"], value="4 años")
         
-        if st.button("📖 Escribir Cuento"):
+        if st.button("Escribir Cuento"):
             if problema and interes:
                 prompt = f"""
                 Escribe un cuento infantil corto para un niño de {edad}.
@@ -192,16 +192,16 @@ elif modo == "🧠 Cuentos Terapéuticos":
     
     with col_out:
         if "cuento_texto" in st.session_state:
-            st.subheader("🎧 Escuchar:")
+            st.subheader("Escuchar:")
             if "cuento_audio" in st.session_state:
                 st.audio(st.session_state.cuento_audio, format='audio/mp3')
             
-            st.subheader("📜 Leer:")
+            st.subheader("Leer:")
             st.write(st.session_state.cuento_texto)
 
 
 # === HERRAMIENTA 3: DISEÑADOR ABN ===
-elif modo == "🔢 Diseñador ABN & Retos":
+elif modo == "Diseñador ABN & Retos":
     crear_encabezado("Diseñador de Actividades ABN")
     st.info("Genera actividades de matemáticas manipulativas basadas en el método ABN.")
     
@@ -210,7 +210,7 @@ elif modo == "🔢 Diseñador ABN & Retos":
         objetivo = st.text_input("Objetivo Matemático:", placeholder="Ej: Conteo, amigos del 10, subitización...")
         materiales = st.text_input("Materiales disponibles:", placeholder="Ej: Piñas, piedras, tapones, ceras...")
         
-        if st.button("🎲 Diseñar Actividad"):
+        if st.button("Diseñar Actividad"):
             if objetivo:
                 prompt = f"""
                 Eres experta en el método ABN (Algoritmo Basado en Números) para Educación Infantil.
@@ -235,7 +235,7 @@ elif modo == "🔢 Diseñador ABN & Retos":
 
 
 # === HERRAMIENTA 4: CHAT GENERAL (EXTRA) ===
-elif modo == "👩‍🏫 Chat Asistente General":
+elif modo == "Chat Asistente General":
     crear_encabezado("Asistente Pedagógico")
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
     
