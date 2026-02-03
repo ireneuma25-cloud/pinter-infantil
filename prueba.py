@@ -132,8 +132,8 @@ if modo == "Traductor Pedagógico (LOMLOE)":
                 with st.spinner("Consultando manuales pedagógicos..."):
                     try:
                         res = model.generate_content(prompt)
-                        # AQUÍ ESTÁ EL ARREGLO: .replace("*", "") limpia los asteriscos
-                        st.session_state.resultado_traductor = res.text.replace("*", "")
+                        # LIMPIEZA: Quitamos asteriscos y almohadillas por si acaso
+                        st.session_state.resultado_traductor = res.text.replace("*", "").replace("#", "")
                     except Exception as e: st.error(f"Error: {e}")
     
     with c2:
@@ -142,7 +142,7 @@ if modo == "Traductor Pedagógico (LOMLOE)":
             st.text_area("Resultado:", value=st.session_state.resultado_traductor, height=250)
 
 
-# === HERRAMIENTA 2: CUENTOS TERAPÉUTICOS ===
+# === HERRAMIENTA 2: CUENTOS TERAPÉUTICOS (CORREGIDO) ===
 elif modo == "Cuentos Terapéuticos":
     crear_encabezado("Cuentos de Neuroeducación")
     st.info("Crea historias personalizadas para gestionar emociones.")
@@ -155,12 +155,24 @@ elif modo == "Cuentos Terapéuticos":
         
         if st.button("Escribir Cuento"):
             if problema and interes:
-                prompt = f"Escribe cuento infantil ({edad}) sobre {problema} usando {interes}. Tono terapéutico y positivo."
+                # PROMPT MÁS ESTRICTO: Le prohibimos poner notas
+                prompt = f"""
+                Escribe un cuento infantil corto para un niño de {edad}.
+                Objetivo: Trabajar {problema} usando {interes}.
+                
+                IMPORTANTE:
+                1. Escribe SOLO el texto del cuento. 
+                2. NO pongas títulos con símbolos '#' ni introducciones.
+                3. NO incluyas notas entre paréntesis tipo (leer suave).
+                4. Empieza directamente con la historia.
+                """
                 with st.spinner("Imaginando historia..."):
                     try:
                         res = model.generate_content(prompt)
-                        # LIMPIEZA DE ASTERISCOS TAMBIÉN AQUÍ
-                        texto_limpio = res.text.replace("*", "")
+                        
+                        # LIMPIEZA A FONDO: Quitamos *, # y _
+                        texto_limpio = res.text.replace("*", "").replace("#", "").replace("_", "")
+                        
                         st.session_state.cuento_texto = texto_limpio
                         
                         tts = gTTS(text=texto_limpio, lang='es')
@@ -175,7 +187,6 @@ elif modo == "Cuentos Terapéuticos":
             if "cuento_audio" in st.session_state:
                 st.audio(st.session_state.cuento_audio, format='audio/mp3')
             st.subheader("Leer:")
-            # Usamos st.write para que se lea mejor (aunque sin negritas ahora)
             st.write(st.session_state.cuento_texto)
 
 
@@ -195,8 +206,8 @@ elif modo == "Diseñador ABN & Retos":
                 with st.spinner("Diseñando reto matemático..."):
                     try:
                         res = model.generate_content(prompt)
-                        # LIMPIEZA DE ASTERISCOS
-                        st.session_state.resultado_abn = res.text.replace("*", "")
+                        # LIMPIEZA
+                        st.session_state.resultado_abn = res.text.replace("*", "").replace("#", "")
                     except Exception as e: st.error(f"Error: {e}")
 
     with c2:
@@ -219,7 +230,7 @@ elif modo == "Chat Asistente General":
             caja = st.empty()
             try:
                 res = model.generate_content(f"Actúa como maestra experta. {pregunta}")
-                # Aquí dejamos los asteriscos porque en el chat SÍ quedan bonitos (se ven negritas)
+                # En el chat sí permitimos formato rico
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
             except Exception as e: caja.error(f"Error: {e}")
