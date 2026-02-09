@@ -3,12 +3,41 @@ import google.generativeai as genai
 from gtts import gTTS
 import io
 import os
-import base64 
+import base64
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide")
 
-# --- 2. FUNCIÓN MÁGICA: IMAGEN INTOCABLE ---
+# ⚠️ CAMBIA ESTO SI TU EXCEL SE LLAMA DIFERENTE
+HOJA_NOMBRE = "Base de Datos Pinter" 
+
+# --- 2. CONEXIÓN CON GOOGLE SHEETS (LA MEMORIA) ---
+def guardar_en_drive(herramienta, texto_entrada, texto_salida):
+    try:
+        # Usamos los secretos que configuraste
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        # Abrimos la hoja
+        sheet = client.open(HOJA_NOMBRE).sheet1
+        
+        # Si la hoja está vacía, ponemos encabezados
+        if not sheet.get_all_values():
+            sheet.append_row(["FECHA", "HERRAMIENTA", "ENTRADA (Lo que escribiste)", "SALIDA (Lo que creó la IA)"])
+            
+        # Guardamos la fila nueva
+        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        sheet.append_row([fecha, herramienta, texto_entrada, texto_salida])
+        return True
+    except Exception as e:
+        return f"Error: {e}"
+
+# --- 3. FUNCIÓN MÁGICA: IMAGEN ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
     if os.path.exists(ruta_imagen):
         with open(ruta_imagen, "rb") as img_file:
@@ -19,7 +48,7 @@ def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
         """
         st.markdown(html, unsafe_allow_html=True)
 
-# --- 3. CSS PROFESIONAL ---
+# --- 4. CSS PROFESIONAL ---
 st.markdown("""
 <style>
     html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
@@ -30,19 +59,17 @@ st.markdown("""
         .logo-esquina { display: none !important; }
         h1 { text-align: center; }
     }
-    
     .stTextArea textarea { font-size: 16px !important; line-height: 1.5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BARRA LATERAL ---
+# --- 5. BARRA LATERAL ---
 with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
     tema = st.radio("Apariencia:", ["Claro", "Oscuro"], horizontal=True)
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
 
-# Lógica de Colores
 if tema == "Claro":
     c_bg_app = "#FDFBF7"
     c_text_main = "#4A4A4A"
@@ -68,7 +95,6 @@ else:
     c_border = "#F4D03F"
     img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
 
-# Inyectar Colores
 st.markdown(f"""
 <style>
     .stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }}
@@ -82,14 +108,14 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. CONEXIÓN IA ---
+# --- 6. CONEXIÓN IA ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
-    st.error(f"Error de conexión: {e}")
+    st.error(f"Error de conexión IA: {e}")
 
-# --- 6. MENÚ DE HERRAMIENTAS ---
+# --- 7. MENÚ ---
 with st.sidebar:
     modo = st.radio("Herramientas Docentes:", [
         "Traductor Pedagógico (LOMLOE)", 
@@ -101,7 +127,7 @@ with st.sidebar:
     if st.button("Descargar Sesión"):
         st.info("Función en mantenimiento")
 
-# --- 7. HEADER ---
+# --- 8. HEADER ---
 def crear_encabezado(titulo):
     c_txt, c_img = st.columns([0.85, 0.15])
     with c_txt:
@@ -109,71 +135,59 @@ def crear_encabezado(titulo):
     with c_img:
         imagen_segura("logo.png", "100%", "logo-esquina")
 
-# --- 8. LÓGICA DE LAS HERRAMIENTAS ---
+# --- 9. LÓGICA DE HERRAMIENTAS ---
 
-# === HERRAMIENTA 1: TRADUCTOR PEDAGÓGICO ===
+# === TRADUCTOR ===
 if modo == "Traductor Pedagógico (LOMLOE)":
     crear_encabezado("Traductor a Lenguaje Técnico")
-    st.info("Transforma observaciones cotidianas en informes profesionales listos para la administración.")
+    st.info("Transforma observaciones cotidianas en informes profesionales.")
     
     c1, c2 = st.columns(2)
     with c1:
-        observacion = st.text_area("¿Qué ha pasado? (Lenguaje normal):", 
-                                   placeholder="Ej: Hoy Juanito le ha quitado el juguete a María...", height=150)
-        contexto = st.text_input("Contexto del alumno (Opcional):", placeholder="Ej: 4 años, posible retraso madurativo.")
+        observacion = st.text_area("Observación:", placeholder="Ej: Hoy Juanito...", height=150)
+        contexto = st.text_input("Contexto:", placeholder="Ej: 4 años...")
         
-        if st.button("Generar Informe Profesional"):
+        if st.button("Generar Informe"):
             if observacion:
-                prompt = f"""
-                Actúa como experta en Pedagogía y LOMLOE.
-                Traduce esta observación: "{observacion}" (Contexto: {contexto}) a lenguaje técnico para un informe oficial.
-                Sé objetiva y profesional.
-                """
-                with st.spinner("Consultando manuales pedagógicos..."):
+                prompt = f"Actúa como experta. Traduce: '{observacion}' (Contexto: {contexto}) a lenguaje técnico pedagógico."
+                with st.spinner("Redactando..."):
                     try:
                         res = model.generate_content(prompt)
-                        # LIMPIEZA: Quitamos asteriscos y almohadillas por si acaso
-                        st.session_state.resultado_traductor = res.text.replace("*", "").replace("#", "")
+                        st.session_state.traductor_res = res.text.replace("*", "").replace("#", "")
+                        st.session_state.traductor_in = f"{observacion} | {contexto}"
                     except Exception as e: st.error(f"Error: {e}")
     
     with c2:
-        st.subheader("Texto para el Informe:")
-        if "resultado_traductor" in st.session_state:
-            st.text_area("Resultado:", value=st.session_state.resultado_traductor, height=250)
+        st.subheader("Resultado:")
+        if "traductor_res" in st.session_state:
+            st.text_area("", value=st.session_state.traductor_res, height=250)
+            
+            # BOTÓN DE GUARDADO
+            if st.button("💾 Guardar en Drive", key="btn_save_trad"):
+                res = guardar_en_drive("Traductor", st.session_state.traductor_in, st.session_state.traductor_res)
+                if res == True: st.success("¡Guardado en tu Excel!")
+                else: st.error(f"No se pudo guardar: {res}")
 
-
-# === HERRAMIENTA 2: CUENTOS TERAPÉUTICOS (CORREGIDO) ===
+# === CUENTOS ===
 elif modo == "Cuentos Terapéuticos":
     crear_encabezado("Cuentos de Neuroeducación")
-    st.info("Crea historias personalizadas para gestionar emociones.")
+    st.info("Historias para gestionar emociones.")
     
     col_input, col_out = st.columns([1, 1])
     with col_input:
-        problema = st.text_input("¿Qué queremos trabajar?", placeholder="Ej: Celos, miedos...")
-        interes = st.text_input("¿Qué le gusta al niño/a?", placeholder="Ej: Dinosaurios, princesas...")
-        edad = st.select_slider("Edad del grupo:", options=["3 años", "4 años", "5 años"], value="4 años")
+        problema = st.text_input("Problema:", placeholder="Ej: Celos, miedos...")
+        interes = st.text_input("Interés:", placeholder="Ej: Dinosaurios...")
+        edad = st.select_slider("Edad:", options=["3 años", "4 años", "5 años"], value="4 años")
         
         if st.button("Escribir Cuento"):
             if problema and interes:
-                # PROMPT MÁS ESTRICTO: Le prohibimos poner notas
-                prompt = f"""
-                Escribe un cuento infantil corto para un niño de {edad}.
-                Objetivo: Trabajar {problema} usando {interes}.
-                
-                IMPORTANTE:
-                1. Escribe SOLO el texto del cuento. 
-                2. NO pongas títulos con símbolos '#' ni introducciones.
-                3. NO incluyas notas entre paréntesis tipo (leer suave).
-                4. Empieza directamente con la historia.
-                """
-                with st.spinner("Imaginando historia..."):
+                prompt = f"Escribe cuento infantil ({edad}). Objetivo: {problema}. Interés: {interes}. SIN NOTAS, SOLO HISTORIA."
+                with st.spinner("Creando..."):
                     try:
                         res = model.generate_content(prompt)
-                        
-                        # LIMPIEZA A FONDO: Quitamos *, # y _
                         texto_limpio = res.text.replace("*", "").replace("#", "").replace("_", "")
-                        
-                        st.session_state.cuento_texto = texto_limpio
+                        st.session_state.cuento_res = texto_limpio
+                        st.session_state.cuento_in = f"{problema} | {interes} | {edad}"
                         
                         tts = gTTS(text=texto_limpio, lang='es')
                         bio = io.BytesIO()
@@ -182,40 +196,50 @@ elif modo == "Cuentos Terapéuticos":
                     except Exception as e: st.error(f"Error: {e}")
     
     with col_out:
-        if "cuento_texto" in st.session_state:
+        if "cuento_res" in st.session_state:
             st.subheader("Escuchar:")
             if "cuento_audio" in st.session_state:
                 st.audio(st.session_state.cuento_audio, format='audio/mp3')
             st.subheader("Leer:")
-            st.write(st.session_state.cuento_texto)
+            st.write(st.session_state.cuento_res)
+            
+            # BOTÓN DE GUARDADO
+            if st.button("💾 Guardar en Drive", key="btn_save_cuento"):
+                res = guardar_en_drive("Cuentos", st.session_state.cuento_in, st.session_state.cuento_res)
+                if res == True: st.success("¡Guardado en tu Excel!")
+                else: st.error(f"No se pudo guardar: {res}")
 
-
-# === HERRAMIENTA 3: DISEÑADOR ABN ===
+# === ABN ===
 elif modo == "Diseñador ABN & Retos":
-    crear_encabezado("Diseñador de Actividades ABN")
-    st.info("Genera actividades de matemáticas manipulativas.")
+    crear_encabezado("Diseñador ABN")
+    st.info("Actividades de matemáticas manipulativas.")
     
     c1, c2 = st.columns(2)
     with c1:
-        objetivo = st.text_input("Objetivo Matemático:", placeholder="Ej: Conteo, amigos del 10...")
-        materiales = st.text_input("Materiales disponibles:", placeholder="Ej: Piñas, piedras...")
+        objetivo = st.text_input("Objetivo:", placeholder="Ej: Conteo...")
+        materiales = st.text_input("Materiales:", placeholder="Ej: Piñas...")
         
         if st.button("Diseñar Actividad"):
             if objetivo:
-                prompt = f"Diseña actividad ABN paso a paso. Objetivo: {objetivo}. Materiales: {materiales}."
-                with st.spinner("Diseñando reto matemático..."):
+                prompt = f"Diseña actividad ABN. Objetivo: {objetivo}. Materiales: {materiales}."
+                with st.spinner("Pensando..."):
                     try:
                         res = model.generate_content(prompt)
-                        # LIMPIEZA
-                        st.session_state.resultado_abn = res.text.replace("*", "").replace("#", "")
+                        st.session_state.abn_res = res.text.replace("*", "").replace("#", "")
+                        st.session_state.abn_in = f"{objetivo} | {materiales}"
                     except Exception as e: st.error(f"Error: {e}")
 
     with c2:
-        if "resultado_abn" in st.session_state:
-            st.markdown(st.session_state.resultado_abn)
+        if "abn_res" in st.session_state:
+            st.markdown(st.session_state.abn_res)
+            
+            # BOTÓN DE GUARDADO
+            if st.button("💾 Guardar en Drive", key="btn_save_abn"):
+                res = guardar_en_drive("ABN", st.session_state.abn_in, st.session_state.abn_res)
+                if res == True: st.success("¡Guardado en tu Excel!")
+                else: st.error(f"No se pudo guardar: {res}")
 
-
-# === HERRAMIENTA 4: CHAT GENERAL ===
+# === CHAT ===
 elif modo == "Chat Asistente General":
     crear_encabezado("Asistente Pedagógico")
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
@@ -223,14 +247,17 @@ elif modo == "Chat Asistente General":
     for m in st.session_state.chat_general:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if pregunta := st.chat_input("Dudas, ideas, preguntas..."):
+    if pregunta := st.chat_input("Dudas..."):
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
         with st.chat_message("user"): st.markdown(pregunta)
         with st.chat_message("assistant"):
             caja = st.empty()
             try:
                 res = model.generate_content(f"Actúa como maestra experta. {pregunta}")
-                # En el chat sí permitimos formato rico
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
+                
+                # Intentamos guardar el chat también (opcional)
+                guardar_en_drive("Chat General", pregunta, res.text)
+                
             except Exception as e: caja.error(f"Error: {e}")
