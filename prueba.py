@@ -26,29 +26,33 @@ def conectar_google_sheets():
     except Exception as e:
         return None
 
-def guardar_en_drive(herramienta, texto_entrada, texto_salida):
+def guardar_en_drive(usuario, herramienta, texto_entrada, texto_salida):
     try:
         sh = conectar_google_sheets()
         if sh is None: return "Error de conexión"
         
         sheet = sh.sheet1
+        # Si la hoja está vacía, ponemos encabezados CON USUARIO
         if not sheet.get_all_values():
-            sheet.append_row(["FECHA", "HERRAMIENTA", "ENTRADA", "SALIDA"])
+            sheet.append_row(["FECHA", "USUARIO", "HERRAMIENTA", "ENTRADA", "SALIDA"])
             
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-        sheet.append_row([fecha, herramienta, texto_entrada, texto_salida])
+        sheet.append_row([fecha, usuario, herramienta, texto_entrada, texto_salida])
         return True
     except Exception as e:
         if "200" in str(e): return True
         return f"Error: {e}"
 
-def leer_historial():
+def leer_historial(usuario_filtro):
     try:
         sh = conectar_google_sheets()
         if sh is None: return []
         sheet = sh.sheet1
-        datos = sheet.get_all_records() # Esto lee todo como una lista de diccionarios
-        return datos
+        todos_los_datos = sheet.get_all_records()
+        
+        # FILTRAR: Solo devolvemos los datos de ESTE usuario
+        mis_datos = [d for d in todos_los_datos if str(d.get("USUARIO", "")).lower() == usuario_filtro.lower()]
+        return mis_datos
     except:
         return []
 
@@ -81,6 +85,17 @@ st.markdown("""
 with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
+    
+    # === AQUÍ PEDIMOS EL NOMBRE ===
+    st.info("👋 ¡Hola! Identifícate para guardar tus cosas.")
+    usuario_actual = st.text_input("Tu Nombre (Ej: Profe María):")
+    if not usuario_actual:
+        st.warning("⚠️ Escribe tu nombre para empezar.")
+        st.stop() # DETIENE LA APP HASTA QUE PONGAN NOMBRE
+        
+    st.success(f"Sesión de: {usuario_actual}")
+    st.markdown("---")
+
     tema = st.radio("Apariencia:", ["Claro", "Oscuro"], horizontal=True)
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
 
@@ -120,7 +135,7 @@ with st.sidebar:
         "Cuentos Terapéuticos",
         "Diseñador ABN & Retos",
         "Chat Asistente General",
-        "📂 Ver Historial Guardado"  # <--- NUEVA OPCIÓN
+        "📂 Ver MI Historial"  # <--- CAMBIO DE NOMBRE
     ])
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
     if st.button("Descargar Sesión"): st.info("Función en mantenimiento")
@@ -155,9 +170,9 @@ if modo == "Traductor Pedagógico (LOMLOE)":
         st.subheader("Resultado:")
         if "traductor_res" in st.session_state:
             st.text_area("", value=st.session_state.traductor_res, height=250)
-            if st.button("💾 Guardar en Drive", key="btn_save_trad"):
-                res = guardar_en_drive("Traductor", st.session_state.traductor_in, st.session_state.traductor_res)
-                if res == True: st.success("¡Guardado correctamente!")
+            if st.button("💾 Guardar en Mi Historial", key="btn_save_trad"):
+                res = guardar_en_drive(usuario_actual, "Traductor", st.session_state.traductor_in, st.session_state.traductor_res)
+                if res == True: st.success("¡Guardado en TU espacio!")
                 else: st.error(res)
 
 elif modo == "Cuentos Terapéuticos":
@@ -188,9 +203,9 @@ elif modo == "Cuentos Terapéuticos":
             if "cuento_audio" in st.session_state: st.audio(st.session_state.cuento_audio, format='audio/mp3')
             st.subheader("Leer:")
             st.write(st.session_state.cuento_res)
-            if st.button("💾 Guardar en Drive", key="btn_save_cuento"):
-                res = guardar_en_drive("Cuentos", st.session_state.cuento_in, st.session_state.cuento_res)
-                if res == True: st.success("¡Guardado correctamente!")
+            if st.button("💾 Guardar en Mi Historial", key="btn_save_cuento"):
+                res = guardar_en_drive(usuario_actual, "Cuentos", st.session_state.cuento_in, st.session_state.cuento_res)
+                if res == True: st.success("¡Guardado en TU espacio!")
                 else: st.error(res)
 
 elif modo == "Diseñador ABN & Retos":
@@ -212,9 +227,9 @@ elif modo == "Diseñador ABN & Retos":
     with c2:
         if "abn_res" in st.session_state:
             st.markdown(st.session_state.abn_res)
-            if st.button("💾 Guardar en Drive", key="btn_save_abn"):
-                res = guardar_en_drive("ABN", st.session_state.abn_in, st.session_state.abn_res)
-                if res == True: st.success("¡Guardado correctamente!")
+            if st.button("💾 Guardar en Mi Historial", key="btn_save_abn"):
+                res = guardar_en_drive(usuario_actual, "ABN", st.session_state.abn_in, st.session_state.abn_res)
+                if res == True: st.success("¡Guardado en TU espacio!")
                 else: st.error(res)
 
 elif modo == "Chat Asistente General":
@@ -231,30 +246,27 @@ elif modo == "Chat Asistente General":
                 res = model.generate_content(f"Actúa como maestra experta. {pregunta}")
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
-                guardar_en_drive("Chat General", pregunta, res.text)
+                guardar_en_drive(usuario_actual, "Chat General", pregunta, res.text)
             except Exception as e: caja.error(f"Error: {e}")
 
-# === NUEVA SECCIÓN: VISOR DE HISTORIAL ===
-elif modo == "📂 Ver Historial Guardado":
-    crear_encabezado("Mi Biblioteca Pedagógica")
-    st.info("Aquí tienes todo lo que has guardado en tu Excel, ordenado del más nuevo al más antiguo.")
+# === VISOR DE HISTORIAL FILTRADO ===
+elif modo == "📂 Ver MI Historial":
+    crear_encabezado(f"Biblioteca de {usuario_actual}")
+    st.info(f"Mostrando solo los documentos creados por: **{usuario_actual}**")
     
     if st.button("🔄 Actualizar Historial"):
         st.rerun()
 
-    with st.spinner("Leyendo tu cuaderno de notas..."):
-        historial = leer_historial()
+    with st.spinner("Buscando tus documentos..."):
+        historial = leer_historial(usuario_actual)
     
     if historial:
-        # Invertimos la lista para ver lo último primero
         historial_invertido = list(reversed(historial))
-        
         for i, item in enumerate(historial_invertido):
-            # Usamos un expander (caja desplegable) para cada registro
             titulo = f"📅 {item.get('FECHA', '')} | {item.get('HERRAMIENTA', '')} | {str(item.get('ENTRADA', ''))[:40]}..."
             with st.expander(titulo):
                 st.caption(f"**Entrada original:** {item.get('ENTRADA', '')}")
                 st.markdown("---")
                 st.markdown(f"### Resultado:\n{item.get('SALIDA', '')}")
     else:
-        st.warning("No se encontró historial o la hoja está vacía.")
+        st.warning(f"Hola {usuario_actual}, todavía no has guardado nada con este nombre.")
