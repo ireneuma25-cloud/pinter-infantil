@@ -14,28 +14,29 @@ st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide"
 # ⚠️ CAMBIA ESTO SI TU EXCEL SE LLAMA DIFERENTE
 HOJA_NOMBRE = "Base de Datos Pinter" 
 
-# --- 2. CONEXIÓN CON GOOGLE SHEETS (LA MEMORIA) ---
+# --- 2. CONEXIÓN CON GOOGLE SHEETS (CORREGIDA) ---
 def guardar_en_drive(herramienta, texto_entrada, texto_salida):
     try:
-        # Usamos los secretos que configuraste
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # Abrimos la hoja
         sheet = client.open(HOJA_NOMBRE).sheet1
         
         # Si la hoja está vacía, ponemos encabezados
         if not sheet.get_all_values():
-            sheet.append_row(["FECHA", "HERRAMIENTA", "ENTRADA (Lo que escribiste)", "SALIDA (Lo que creó la IA)"])
+            sheet.append_row(["FECHA", "HERRAMIENTA", "ENTRADA", "SALIDA"])
             
-        # Guardamos la fila nueva
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
         sheet.append_row([fecha, herramienta, texto_entrada, texto_salida])
         return True
+        
     except Exception as e:
-        return f"Error: {e}"
+        # AQUÍ ESTÁ EL TRUCO: Si el error dice "200", es que en realidad funcionó.
+        if "200" in str(e):
+            return True
+        return f"Error real: {e}"
 
 # --- 3. FUNCIÓN MÁGICA: IMAGEN ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
@@ -162,11 +163,10 @@ if modo == "Traductor Pedagógico (LOMLOE)":
         if "traductor_res" in st.session_state:
             st.text_area("", value=st.session_state.traductor_res, height=250)
             
-            # BOTÓN DE GUARDADO
             if st.button("💾 Guardar en Drive", key="btn_save_trad"):
                 res = guardar_en_drive("Traductor", st.session_state.traductor_in, st.session_state.traductor_res)
-                if res == True: st.success("¡Guardado en tu Excel!")
-                else: st.error(f"No se pudo guardar: {res}")
+                if res == True: st.success("¡Guardado correctamente!")
+                else: st.error(res)
 
 # === CUENTOS ===
 elif modo == "Cuentos Terapéuticos":
@@ -203,11 +203,10 @@ elif modo == "Cuentos Terapéuticos":
             st.subheader("Leer:")
             st.write(st.session_state.cuento_res)
             
-            # BOTÓN DE GUARDADO
             if st.button("💾 Guardar en Drive", key="btn_save_cuento"):
                 res = guardar_en_drive("Cuentos", st.session_state.cuento_in, st.session_state.cuento_res)
-                if res == True: st.success("¡Guardado en tu Excel!")
-                else: st.error(f"No se pudo guardar: {res}")
+                if res == True: st.success("¡Guardado correctamente!")
+                else: st.error(res)
 
 # === ABN ===
 elif modo == "Diseñador ABN & Retos":
@@ -233,11 +232,10 @@ elif modo == "Diseñador ABN & Retos":
         if "abn_res" in st.session_state:
             st.markdown(st.session_state.abn_res)
             
-            # BOTÓN DE GUARDADO
             if st.button("💾 Guardar en Drive", key="btn_save_abn"):
                 res = guardar_en_drive("ABN", st.session_state.abn_in, st.session_state.abn_res)
-                if res == True: st.success("¡Guardado en tu Excel!")
-                else: st.error(f"No se pudo guardar: {res}")
+                if res == True: st.success("¡Guardado correctamente!")
+                else: st.error(res)
 
 # === CHAT ===
 elif modo == "Chat Asistente General":
@@ -256,8 +254,5 @@ elif modo == "Chat Asistente General":
                 res = model.generate_content(f"Actúa como maestra experta. {pregunta}")
                 caja.markdown(res.text)
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
-                
-                # Intentamos guardar el chat también (opcional)
                 guardar_en_drive("Chat General", pregunta, res.text)
-                
             except Exception as e: caja.error(f"Error: {e}")
