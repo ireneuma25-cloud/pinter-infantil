@@ -43,17 +43,31 @@ def guardar_en_drive(usuario, herramienta, texto_entrada, texto_salida):
         if "200" in str(e): return True
         return f"Error: {e}"
 
-def leer_historial(usuario_filtro):
+def leer_historial(usuario_filtro=None):
     try:
         sh = conectar_google_sheets()
         if sh is None: return []
         sheet = sh.sheet1
         todos_los_datos = sheet.get_all_records()
         
-        # FILTRAR: Solo devolvemos los datos de ESTE usuario
-        mis_datos = [d for d in todos_los_datos if str(d.get("USUARIO", "")).lower() == usuario_filtro.lower()]
+        # SI NO HAY FILTRO (MODO ESPÍA), DEVOLVEMOS TODO
+        if usuario_filtro is None:
+            return todos_los_datos
+
+        # SI HAY FILTRO, BUSCAMOS COINCIDENCIAS
+        mis_datos = []
+        usuario_limpio = str(usuario_filtro).strip().lower()
+        
+        for d in todos_los_datos:
+            # Buscamos la columna USUARIO (o Usuario, o usuario...)
+            usuario_en_excel = str(d.get("USUARIO") or d.get("Usuario") or d.get("usuario") or "Desconocido")
+            
+            if usuario_en_excel.strip().lower() == usuario_limpio:
+                mis_datos.append(d)
+                
         return mis_datos
-    except:
+    except Exception as e:
+        st.error(f"Error leyendo historial: {e}")
         return []
 
 # --- 3. FUNCIÓN MÁGICA: IMAGEN ---
@@ -86,12 +100,11 @@ with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
     
-    # === AQUÍ PEDIMOS EL NOMBRE ===
     st.info("👋 ¡Hola! Identifícate para guardar tus cosas.")
     usuario_actual = st.text_input("Tu Nombre (Ej: Profe María):")
     if not usuario_actual:
         st.warning("⚠️ Escribe tu nombre para empezar.")
-        st.stop() # DETIENE LA APP HASTA QUE PONGAN NOMBRE
+        st.stop()
         
     st.success(f"Sesión de: {usuario_actual}")
     st.markdown("---")
@@ -135,7 +148,7 @@ with st.sidebar:
         "Cuentos Terapéuticos",
         "Diseñador ABN & Retos",
         "Chat Asistente General",
-        "📂 Ver MI Historial"  # <--- CAMBIO DE NOMBRE
+        "📂 Ver MI Historial"
     ])
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
     if st.button("Descargar Sesión"): st.info("Función en mantenimiento")
@@ -249,24 +262,36 @@ elif modo == "Chat Asistente General":
                 guardar_en_drive(usuario_actual, "Chat General", pregunta, res.text)
             except Exception as e: caja.error(f"Error: {e}")
 
-# === VISOR DE HISTORIAL FILTRADO ===
+# === VISOR DE HISTORIAL MEJORADO ===
 elif modo == "📂 Ver MI Historial":
     crear_encabezado(f"Biblioteca de {usuario_actual}")
-    st.info(f"Mostrando solo los documentos creados por: **{usuario_actual}**")
+    
+    # CHECKBOX DE EMERGENCIA
+    ver_todo = st.checkbox("🕵️‍♀️ No veo mis cosas (Mostrar TODO el Excel tal cual)")
     
     if st.button("🔄 Actualizar Historial"):
         st.rerun()
 
-    with st.spinner("Buscando tus documentos..."):
-        historial = leer_historial(usuario_actual)
+    with st.spinner("Conectando con la base de datos..."):
+        # Si marca "Ver todo", pasamos None para que no filtre
+        filtro = None if ver_todo else usuario_actual
+        historial = leer_historial(filtro)
     
     if historial:
         historial_invertido = list(reversed(historial))
+        
+        st.write(f"📝 Se han encontrado **{len(historial)}** documentos.")
+        
         for i, item in enumerate(historial_invertido):
-            titulo = f"📅 {item.get('FECHA', '')} | {item.get('HERRAMIENTA', '')} | {str(item.get('ENTRADA', ''))[:40]}..."
+            # Mostramos el usuario también si estamos en modo "Ver Todo"
+            quien = f"👤 {item.get('USUARIO', 'Anónimo')} | " if ver_todo else ""
+            
+            titulo = f"{quien}📅 {item.get('FECHA', '')} | {item.get('HERRAMIENTA', '')} | {str(item.get('ENTRADA', ''))[:30]}..."
             with st.expander(titulo):
                 st.caption(f"**Entrada original:** {item.get('ENTRADA', '')}")
                 st.markdown("---")
                 st.markdown(f"### Resultado:\n{item.get('SALIDA', '')}")
     else:
-        st.warning(f"Hola {usuario_actual}, todavía no has guardado nada con este nombre.")
+        st.warning("⚠️ No se ha encontrado nada.")
+        if not ver_todo:
+            st.info("Prueba a marcar la casilla de arriba 'Mostrar TODO' para ver si tus datos están guardados con otro nombre.")
