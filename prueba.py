@@ -11,32 +11,46 @@ from datetime import datetime
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide")
 
-# ⚠️ CAMBIA ESTO SI TU EXCEL SE LLAMA DIFERENTE
+# NOMBRE EXACTO DEL EXCEL
 HOJA_NOMBRE = "Base de Datos Pinter" 
 
-# --- 2. CONEXIÓN CON GOOGLE SHEETS (CORREGIDA) ---
-def guardar_en_drive(herramienta, texto_entrada, texto_salida):
+# --- 2. CONEXIÓN CON GOOGLE SHEETS ---
+def conectar_google_sheets():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
+        sh = client.open(HOJA_NOMBRE)
+        return sh
+    except Exception as e:
+        return None
+
+def guardar_en_drive(herramienta, texto_entrada, texto_salida):
+    try:
+        sh = conectar_google_sheets()
+        if sh is None: return "Error de conexión"
         
-        sheet = client.open(HOJA_NOMBRE).sheet1
-        
-        # Si la hoja está vacía, ponemos encabezados
+        sheet = sh.sheet1
         if not sheet.get_all_values():
             sheet.append_row(["FECHA", "HERRAMIENTA", "ENTRADA", "SALIDA"])
             
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
         sheet.append_row([fecha, herramienta, texto_entrada, texto_salida])
         return True
-        
     except Exception as e:
-        # AQUÍ ESTÁ EL TRUCO: Si el error dice "200", es que en realidad funcionó.
-        if "200" in str(e):
-            return True
-        return f"Error real: {e}"
+        if "200" in str(e): return True
+        return f"Error: {e}"
+
+def leer_historial():
+    try:
+        sh = conectar_google_sheets()
+        if sh is None: return []
+        sheet = sh.sheet1
+        datos = sheet.get_all_records() # Esto lee todo como una lista de diccionarios
+        return datos
+    except:
+        return []
 
 # --- 3. FUNCIÓN MÁGICA: IMAGEN ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
@@ -55,7 +69,6 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
     img { pointer-events: none !important; }
     [data-testid="StyledFullScreenButton"] { display: none !important; }
-    
     @media only screen and (max-width: 768px) {
         .logo-esquina { display: none !important; }
         h1 { text-align: center; }
@@ -72,29 +85,13 @@ with st.sidebar:
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
 
 if tema == "Claro":
-    c_bg_app = "#FDFBF7"
-    c_text_main = "#4A4A4A"
-    c_sidebar = "#F9F5EB"
-    c_sidebar_text = "#4A4A4A" 
-    c_caja_chat = "#FFFFFF"
-    c_input_bg = "#FFFFFF" 
-    c_input_text = "#000000"
-    c_btn_bg = "#F0F0F0"
-    c_btn_text = "#000000"
-    c_border = "#DDDDDD"
-    img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
+    c_bg_app = "#FDFBF7"; c_text_main = "#4A4A4A"; c_sidebar = "#F9F5EB"; c_sidebar_text = "#4A4A4A" 
+    c_caja_chat = "#FFFFFF"; c_input_bg = "#FFFFFF"; c_input_text = "#000000"; c_btn_bg = "#F0F0F0"
+    c_btn_text = "#000000"; c_border = "#DDDDDD"; img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
-    c_bg_app = "#3E2F28"      
-    c_text_main = "#FFFFFF"   
-    c_sidebar = "#4E3B32"     
-    c_sidebar_text = "#FFFFFF" 
-    c_caja_chat = "#5D473D"   
-    c_input_bg = "#FFF8E7"    
-    c_input_text = "#3E2F28"  
-    c_btn_bg = "#F4D03F"      
-    c_btn_text = "#1E1611"    
-    c_border = "#F4D03F"
-    img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
+    c_bg_app = "#3E2F28"; c_text_main = "#FFFFFF"; c_sidebar = "#4E3B32"; c_sidebar_text = "#FFFFFF" 
+    c_caja_chat = "#5D473D"; c_input_bg = "#FFF8E7"; c_input_text = "#3E2F28"; c_btn_bg = "#F4D03F"
+    c_btn_text = "#1E1611"; c_border = "#F4D03F"; img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
 
 st.markdown(f"""
 <style>
@@ -122,11 +119,11 @@ with st.sidebar:
         "Traductor Pedagógico (LOMLOE)", 
         "Cuentos Terapéuticos",
         "Diseñador ABN & Retos",
-        "Chat Asistente General"
+        "Chat Asistente General",
+        "📂 Ver Historial Guardado"  # <--- NUEVA OPCIÓN
     ])
     st.markdown("<hr style='margin-top: -5px; margin-bottom: 20px; border: 0; border-top: 1px solid #aaaaaa;'>", unsafe_allow_html=True)
-    if st.button("Descargar Sesión"):
-        st.info("Función en mantenimiento")
+    if st.button("Descargar Sesión"): st.info("Función en mantenimiento")
 
 # --- 8. HEADER ---
 def crear_encabezado(titulo):
@@ -138,16 +135,13 @@ def crear_encabezado(titulo):
 
 # --- 9. LÓGICA DE HERRAMIENTAS ---
 
-# === TRADUCTOR ===
 if modo == "Traductor Pedagógico (LOMLOE)":
     crear_encabezado("Traductor a Lenguaje Técnico")
     st.info("Transforma observaciones cotidianas en informes profesionales.")
-    
     c1, c2 = st.columns(2)
     with c1:
         observacion = st.text_area("Observación:", placeholder="Ej: Hoy Juanito...", height=150)
         contexto = st.text_input("Contexto:", placeholder="Ej: 4 años...")
-        
         if st.button("Generar Informe"):
             if observacion:
                 prompt = f"Actúa como experta. Traduce: '{observacion}' (Contexto: {contexto}) a lenguaje técnico pedagógico."
@@ -157,28 +151,23 @@ if modo == "Traductor Pedagógico (LOMLOE)":
                         st.session_state.traductor_res = res.text.replace("*", "").replace("#", "")
                         st.session_state.traductor_in = f"{observacion} | {contexto}"
                     except Exception as e: st.error(f"Error: {e}")
-    
     with c2:
         st.subheader("Resultado:")
         if "traductor_res" in st.session_state:
             st.text_area("", value=st.session_state.traductor_res, height=250)
-            
             if st.button("💾 Guardar en Drive", key="btn_save_trad"):
                 res = guardar_en_drive("Traductor", st.session_state.traductor_in, st.session_state.traductor_res)
                 if res == True: st.success("¡Guardado correctamente!")
                 else: st.error(res)
 
-# === CUENTOS ===
 elif modo == "Cuentos Terapéuticos":
     crear_encabezado("Cuentos de Neuroeducación")
     st.info("Historias para gestionar emociones.")
-    
     col_input, col_out = st.columns([1, 1])
     with col_input:
         problema = st.text_input("Problema:", placeholder="Ej: Celos, miedos...")
         interes = st.text_input("Interés:", placeholder="Ej: Dinosaurios...")
         edad = st.select_slider("Edad:", options=["3 años", "4 años", "5 años"], value="4 años")
-        
         if st.button("Escribir Cuento"):
             if problema and interes:
                 prompt = f"Escribe cuento infantil ({edad}). Objetivo: {problema}. Interés: {interes}. SIN NOTAS, SOLO HISTORIA."
@@ -188,36 +177,29 @@ elif modo == "Cuentos Terapéuticos":
                         texto_limpio = res.text.replace("*", "").replace("#", "").replace("_", "")
                         st.session_state.cuento_res = texto_limpio
                         st.session_state.cuento_in = f"{problema} | {interes} | {edad}"
-                        
                         tts = gTTS(text=texto_limpio, lang='es')
                         bio = io.BytesIO()
                         tts.write_to_fp(bio)
                         st.session_state.cuento_audio = bio
                     except Exception as e: st.error(f"Error: {e}")
-    
     with col_out:
         if "cuento_res" in st.session_state:
             st.subheader("Escuchar:")
-            if "cuento_audio" in st.session_state:
-                st.audio(st.session_state.cuento_audio, format='audio/mp3')
+            if "cuento_audio" in st.session_state: st.audio(st.session_state.cuento_audio, format='audio/mp3')
             st.subheader("Leer:")
             st.write(st.session_state.cuento_res)
-            
             if st.button("💾 Guardar en Drive", key="btn_save_cuento"):
                 res = guardar_en_drive("Cuentos", st.session_state.cuento_in, st.session_state.cuento_res)
                 if res == True: st.success("¡Guardado correctamente!")
                 else: st.error(res)
 
-# === ABN ===
 elif modo == "Diseñador ABN & Retos":
     crear_encabezado("Diseñador ABN")
     st.info("Actividades de matemáticas manipulativas.")
-    
     c1, c2 = st.columns(2)
     with c1:
         objetivo = st.text_input("Objetivo:", placeholder="Ej: Conteo...")
         materiales = st.text_input("Materiales:", placeholder="Ej: Piñas...")
-        
         if st.button("Diseñar Actividad"):
             if objetivo:
                 prompt = f"Diseña actividad ABN. Objetivo: {objetivo}. Materiales: {materiales}."
@@ -227,24 +209,19 @@ elif modo == "Diseñador ABN & Retos":
                         st.session_state.abn_res = res.text.replace("*", "").replace("#", "")
                         st.session_state.abn_in = f"{objetivo} | {materiales}"
                     except Exception as e: st.error(f"Error: {e}")
-
     with c2:
         if "abn_res" in st.session_state:
             st.markdown(st.session_state.abn_res)
-            
             if st.button("💾 Guardar en Drive", key="btn_save_abn"):
                 res = guardar_en_drive("ABN", st.session_state.abn_in, st.session_state.abn_res)
                 if res == True: st.success("¡Guardado correctamente!")
                 else: st.error(res)
 
-# === CHAT ===
 elif modo == "Chat Asistente General":
     crear_encabezado("Asistente Pedagógico")
     if "chat_general" not in st.session_state: st.session_state.chat_general = []
-    
     for m in st.session_state.chat_general:
         with st.chat_message(m["role"]): st.markdown(m["content"])
-
     if pregunta := st.chat_input("Dudas..."):
         st.session_state.chat_general.append({"role": "user", "content": pregunta})
         with st.chat_message("user"): st.markdown(pregunta)
@@ -256,3 +233,28 @@ elif modo == "Chat Asistente General":
                 st.session_state.chat_general.append({"role": "assistant", "content": res.text})
                 guardar_en_drive("Chat General", pregunta, res.text)
             except Exception as e: caja.error(f"Error: {e}")
+
+# === NUEVA SECCIÓN: VISOR DE HISTORIAL ===
+elif modo == "📂 Ver Historial Guardado":
+    crear_encabezado("Mi Biblioteca Pedagógica")
+    st.info("Aquí tienes todo lo que has guardado en tu Excel, ordenado del más nuevo al más antiguo.")
+    
+    if st.button("🔄 Actualizar Historial"):
+        st.rerun()
+
+    with st.spinner("Leyendo tu cuaderno de notas..."):
+        historial = leer_historial()
+    
+    if historial:
+        # Invertimos la lista para ver lo último primero
+        historial_invertido = list(reversed(historial))
+        
+        for i, item in enumerate(historial_invertido):
+            # Usamos un expander (caja desplegable) para cada registro
+            titulo = f"📅 {item.get('FECHA', '')} | {item.get('HERRAMIENTA', '')} | {str(item.get('ENTRADA', ''))[:40]}..."
+            with st.expander(titulo):
+                st.caption(f"**Entrada original:** {item.get('ENTRADA', '')}")
+                st.markdown("---")
+                st.markdown(f"### Resultado:\n{item.get('SALIDA', '')}")
+    else:
+        st.warning("No se encontró historial o la hoja está vacía.")
