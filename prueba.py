@@ -11,7 +11,7 @@ from datetime import datetime
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Pinter Edu", page_icon="logo2.png", layout="wide")
 
-# 👇 TU ID (No lo toques, ya vimos que es el correcto)
+# TU ID (No lo toques, ya vimos que es el correcto)
 HOJA_ID = "12Y57qDxRfNPpHLPUBbcGpb-T4FeHTTjlG9_RPBKeYT8"
 
 # --- 2. CONEXIÓN ---
@@ -67,10 +67,10 @@ st.markdown("""<style>html, body, [class*="css"] { font-family: 'Times New Roman
 with st.sidebar:
     imagen_segura("logo1.png", "85%") 
     st.write("") 
-    st.info("👋 ¡Hola! Identifícate.")
+    st.info("¡Hola! Identifícate.")
     usuario_actual = st.text_input("Tu Nombre (Ej: Irene):")
     if not usuario_actual:
-        st.warning("⚠️ Escribe tu nombre para empezar.")
+        st.warning("Escribe tu nombre para empezar.")
         st.stop()
     st.success(f"Sesión de: {usuario_actual}")
     st.markdown("---")
@@ -92,7 +92,7 @@ try:
 except Exception as e: st.error(f"Error IA: {e}")
 
 with st.sidebar:
-    modo = st.radio("Herramientas Docentes:", ["Traductor Pedagógico (LOMLOE)", "Cuentos Terapéuticos", "Diseñador ABN & Retos", "Chat Asistente General", "📂 Ver MI Historial"])
+    modo = st.radio("Herramientas Docentes:", ["Traductor Pedagógico (LOMLOE)", "Cuentos Terapéuticos", "Diseñador ABN & Retos", "Chat Asistente General", "Ver MI Historial"])
 
 def crear_encabezado(titulo):
     c_txt, c_img = st.columns([0.85, 0.15])
@@ -110,7 +110,7 @@ if modo == "Traductor Pedagógico (LOMLOE)":
     with c2:
         if "trad_res" in st.session_state:
             st.write(st.session_state.trad_res)
-            if st.button("💾 Guardar"):
+            if st.button("Guardar"):
                 if guardar_en_drive(usuario_actual, "Traductor", st.session_state.trad_in, st.session_state.trad_res): st.success("¡Guardado!")
 
 elif modo == "Cuentos Terapéuticos":
@@ -124,7 +124,7 @@ elif modo == "Cuentos Terapéuticos":
     with c2:
         if "cuento_res" in st.session_state:
             st.write(st.session_state.cuento_res)
-            if st.button("💾 Guardar"):
+            if st.button("Guardar"):
                 if guardar_en_drive(usuario_actual, "Cuentos", st.session_state.cuento_in, st.session_state.cuento_res): st.success("¡Guardado!")
 
 elif modo == "Diseñador ABN & Retos":
@@ -138,7 +138,7 @@ elif modo == "Diseñador ABN & Retos":
     with c2:
         if "abn_res" in st.session_state:
             st.write(st.session_state.abn_res)
-            if st.button("💾 Guardar"):
+            if st.button("Guardar"):
                 if guardar_en_drive(usuario_actual, "ABN", st.session_state.abn_in, st.session_state.abn_res): st.success("¡Guardado!")
 
 elif modo == "Chat Asistente General":
@@ -152,12 +152,12 @@ elif modo == "Chat Asistente General":
         guardar_en_drive(usuario_actual, "Chat", p, r)
 
 # --- ZONA DE RADIOGRAFÍA ---
-elif modo == "📂 Ver MI Historial":
+elif modo == "Ver MI Historial":
     crear_encabezado(f"Biblioteca de {usuario_actual}")
     
-    if st.button("🔄 Actualizar"): st.rerun()
+    if st.button("Actualizar"): st.rerun()
 
-    st.info("👇 A continuación verás lo que el robot está viendo REALMENTE en el Excel.")
+    st.info("A continuación verás lo que el robot está viendo REALMENTE en el Excel.")
     
     estado, datos = leer_todo_bruto()
     
@@ -165,7 +165,7 @@ elif modo == "📂 Ver MI Historial":
         st.error(estado)
     else:
         # MOSTRAMOS LOS DATOS EN BRUTO PARA QUE VEAS QUÉ PASA
-        st.write(f"📊 El robot ha encontrado **{len(datos)} filas** en total.")
+        st.write(f"El robot ha encontrado **{len(datos)} filas** en total.")
         st.dataframe(datos) # ESTO ES LA RADIOGRAFÍA
         
         # Intentamos mostrarlo bonito si podemos
@@ -186,7 +186,7 @@ elif modo == "📂 Ver MI Historial":
                 
                 if usuario_actual.lower() in str(nombre_en_excel).lower():
                     encontrados += 1
-                    with st.expander(f"✅ {fila[0]} | {fila[2]}"):
+                    with st.expander(f"{fila[0]} | {fila[2]}"):
                         st.write(fila[4]) # Salida
         
         if encontrados == 0:
