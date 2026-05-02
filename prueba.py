@@ -119,11 +119,16 @@ elif modo == "Cuentos Terapéuticos":
     with c1:
         prob = st.text_input("Problema:"); inte = st.text_input("Interés:"); edad = st.select_slider("Edad", ["3", "4", "5"])
         if st.button("Crear"):
-            res = model.generate_content(f"Cuento {edad}. Problema: {prob}. Interés: {inte}.").text
+            # ORDEN ESTRICTA PARA EVITAR RELLENO
+            prompt_estricto = f"Escribe un cuento para {edad} años. Problema: {prob}. Interés: {inte}. REGLA ESTRICTA: Escribe ÚNICAMENTE el texto del cuento, empieza directamente con la historia. No añadas introducciones, ni saludos, ni des explicaciones."
+            res = model.generate_content(prompt_estricto).text
             st.session_state.cuento_res, st.session_state.cuento_in = res, f"{prob} | {inte}"
             
-            # MAGIA DEL AUDIO AQUÍ
-            tts = gTTS(text=res, lang='es')
+            # LIMPIEZA DE SÍMBOLOS PARA EL AUDIO
+            texto_limpio_para_audio = res.replace("*", "").replace("#", "").replace("_", "")
+            
+            # MAGIA DEL AUDIO AQUÍ (Usando el texto limpio)
+            tts = gTTS(text=texto_limpio_para_audio, lang='es')
             bio = io.BytesIO()
             tts.write_to_fp(bio)
             st.session_state.cuento_audio = bio
@@ -201,4 +206,4 @@ elif modo == "Ver MI Historial":
                         st.write(fila[4]) # Salida
         
         if encontrados == 0:
-            st.warning(f"El robot ve datos, pero no encuentra el nombre '{usuario_actual}' en la **Columna 2** (Columna B). Mira la tabla de arriba para ver dónde está escrito tu nombre.")
+            st.warning(f"El robot ve datos, pero no encuentra el nombre '{usuario_actual}' en la Columna B. Mira la tabla de arriba para ver dónde está escrito tu nombre.")
