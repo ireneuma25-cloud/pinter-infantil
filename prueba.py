@@ -121,8 +121,19 @@ elif modo == "Cuentos Terapéuticos":
         if st.button("Crear"):
             res = model.generate_content(f"Cuento {edad}. Problema: {prob}. Interés: {inte}.").text
             st.session_state.cuento_res, st.session_state.cuento_in = res, f"{prob} | {inte}"
+            
+            # MAGIA DEL AUDIO AQUÍ
+            tts = gTTS(text=res, lang='es')
+            bio = io.BytesIO()
+            tts.write_to_fp(bio)
+            st.session_state.cuento_audio = bio
+            
     with c2:
         if "cuento_res" in st.session_state:
+            # REPRODUCTOR DE AUDIO
+            if "cuento_audio" in st.session_state:
+                st.audio(st.session_state.cuento_audio, format='audio/mp3')
+                
             st.write(st.session_state.cuento_res)
             if st.button("Guardar"):
                 if guardar_en_drive(usuario_actual, "Cuentos", st.session_state.cuento_in, st.session_state.cuento_res): st.success("¡Guardado!")
