@@ -1,4 +1,4 @@
-   import streamlit as st
+           import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 import io
@@ -708,6 +708,51 @@ def leer_todo_bruto():
     except Exception as e:
         return f"Error leyendo: {e}", []
 
+def borrar_registro_historial(indice_fila_0_based, fecha=None, usuario=None, herramienta=None):
+    try:
+        sh = conectar_google_sheets()
+        if sh is None: return False
+        sheet = sh.sheet1
+        num_fila = indice_fila_0_based + 1
+        
+        vals = sheet.get_all_values()
+        if 0 <= indice_fila_0_based < len(vals):
+            fila_actual = vals[indice_fila_0_based]
+            if not fecha or (len(fila_actual) >= 3 and fila_actual[0] == fecha and fila_actual[2] == herramienta):
+                sheet.delete_rows(num_fila)
+                return True
+            
+            for idx_real, f in enumerate(vals):
+                if idx_real == 0: continue
+                if len(f) >= 3 and f[0] == fecha and (usuario and usuario.lower() in f[1].lower()) and f[2] == herramienta:
+                    sheet.delete_rows(idx_real + 1)
+                    return True
+
+        sheet.delete_rows(num_fila)
+        return True
+    except Exception as e:
+        try:
+            sh = conectar_google_sheets()
+            sheet = sh.sheet1
+            vals = sheet.get_all_values()
+            fila_encontrada = None
+            if 0 <= indice_fila_0_based < len(vals):
+                fila_encontrada = indice_fila_0_based
+            elif fecha:
+                for idx_real, f in enumerate(vals):
+                    if len(f) >= 3 and f[0] == fecha and f[2] == herramienta:
+                        fila_encontrada = idx_real
+                        break
+            if fila_encontrada is not None:
+                vals.pop(fila_encontrada)
+                sheet.clear()
+                if vals:
+                    sheet.update(vals)
+                return True
+        except Exception:
+            return False
+        return False
+
 # --- 3. IMAGEN Y CSS ---
 def imagen_segura(ruta_imagen, ancho_css, clase_extra=""):
     if os.path.exists(ruta_imagen):
@@ -729,10 +774,10 @@ with st.sidebar:
 
 if tema == "Claro":
     c_bg_app = "#FDFBF7"; c_text_main = "#4A4A4A"; c_sidebar = "#F9F5EB"; c_sidebar_text = "#4A4A4A" 
-    c_caja_chat = "#FFFFFF"; c_input_bg = "#FFFFFF"; c_input_text = "#000000"; c_btn_bg = "#F0F0F0"; c_btn_text = "#000000"; c_border = "#DDDDDD"; img_fondo = 'url("[https://www.transparenttextures.com/patterns/cream-paper.png](https://www.transparenttextures.com/patterns/cream-paper.png)")'
+    c_caja_chat = "#FFFFFF"; c_input_bg = "#FFFFFF"; c_input_text = "#000000"; c_btn_bg = "#F0F0F0"; c_btn_text = "#000000"; c_border = "#DDDDDD"; img_fondo = 'url("https://www.transparenttextures.com/patterns/cream-paper.png")'
 else:
     c_bg_app = "#3E2F28"; c_text_main = "#FFFFFF"; c_sidebar = "#4E3B32"; c_sidebar_text = "#FFFFFF" 
-    c_caja_chat = "#5D473D"; c_input_bg = "#FFF8E7"; c_input_text = "#3E2F28"; c_btn_bg = "#F4D03F"; c_btn_text = "#1E1611"; c_border = "#F4D03F"; img_fondo = 'url("[https://www.transparenttextures.com/patterns/black-linen.png](https://www.transparenttextures.com/patterns/black-linen.png)")'
+    c_caja_chat = "#5D473D"; c_input_bg = "#FFF8E7"; c_input_text = "#3E2F28"; c_btn_bg = "#F4D03F"; c_btn_text = "#1E1611"; c_border = "#F4D03F"; img_fondo = 'url("https://www.transparenttextures.com/patterns/black-linen.png")'
 
 st.markdown(f"""<style>.stApp {{ background-color: {c_bg_app}; background-image: {img_fondo}; }} html, body, h1, h2, h3, p, label, div, .stMarkdown {{ color: {c_text_main} !important; }} section[data-testid="stSidebar"] {{ background-color: {c_sidebar}; border-right: 1px solid {c_border}; }} section[data-testid="stSidebar"] * {{ color: {c_sidebar_text} !important; }} .stTextInput input, .stTextArea textarea {{ background-color: {c_input_bg} !important; color: {c_input_text} !important; border: 2px solid {c_border} !important; }} .stButton > button {{ background-color: {c_btn_bg} !important; color: {c_btn_text} !important; border: 1px solid {c_text_main} !important; font-weight: bold !important; }} .stChatMessage {{ background-color: {c_caja_chat}; border: 1px solid {c_border}; }} .stInfo, .stSuccess {{ background-color: {c_caja_chat} !important; color: {c_text_main} !important; border: 1px solid {c_border}; }} .caja-sesion {{ background-color: {c_bg_app}; padding: 10px; border-radius: 8px; border: 2px solid {c_border}; color: {c_text_main}; text-align: center; margin-bottom: 10px; font-size: 16px; }}</style>""", unsafe_allow_html=True)
 
@@ -793,11 +838,44 @@ with contenedor_login.container():
         
         usuario_actual = st.session_state.usuario_actual
 
+class ModeloGeminiResiliente:
+    """
+    Envoltura de alta disponibilidad para Google Gemini.
+    Alterna automáticamente entre modelos oficiales para asegurar disponibilidad
+    ininterrumpida frente a límites de cuota (429) o saturación temporal.
+    """
+    def __init__(self):
+        self.candidatos = [
+            'gemini-3.8-flash',
+            'gemini-flash-latest',
+            'gemini-3.7-flash',
+            'gemini-3.5-flash',
+            'gemini-flash-lite-latest'
+        ]
+        self.idx_activo = 0
+
+    def generate_content(self, prompt, **kwargs):
+        ultimo_error = None
+        for offset in range(len(self.candidatos)):
+            idx = (self.idx_activo + offset) % len(self.candidatos)
+            modelo_nombre = self.candidatos[idx]
+            try:
+                instancia = genai.GenerativeModel(modelo_nombre)
+                resultado = instancia.generate_content(prompt, **kwargs)
+                self.idx_activo = idx
+                return resultado
+            except Exception as e:
+                err_str = str(e).lower()
+                ultimo_error = e
+                if any(k in err_str for k in ["429", "quota", "limit", "exhausted", "not found", "404", "503", "unavailable"]):
+                    continue
+                else:
+                    raise e
+        raise ultimo_error
+
 try:
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    # Usamos gemini-2.5-flash porque es estable, rápido y tiene un límite gratuito gigantesco,
-    # evitando así el límite estricto de 20 peticiones/día de las versiones más modernas.
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = ModeloGeminiResiliente()
 except Exception as e: st.error(f"Error IA: {e}")
 
 with st.sidebar:
@@ -1035,92 +1113,92 @@ EXPEDIENTE INTEGRAL DEL ALUMNO PARA EVALUACIÓN FORMATIVA LOMLOE:
                                     st.session_state.modo = "Diseñador ABN & Retos"
                                     st.rerun()
 
-    # 2. ASISTENCIA DIARIA PERSISTENTE
-    with tab_asistencia:
-        st.markdown(f"### Pase de Asistencia — {fecha_hoy}")
-        st.markdown("Marca la asistencia del grupo de hoy. Quedará registrada y acumulada día a día en tu Google Drive.")
-        
-        if st.session_state.pop("aviso_asistencia_guardada", False):
-            st.success("¡Asistencia de hoy registrada con éxito en Google Drive!")
-        
-        dict_nueva_asistencia = {}
-        for al in alumnos_registrados:
-            c_nom, c_est = st.columns([0.4, 0.6])
-            with c_nom:
-                st.markdown(f"**{al['alumno']}**")
-            with c_est:
-                estado_previo = asistencias_hoy.get(al["alumno"], "Presente")
-                idx_previo = 0
-                if estado_previo == "Ausente": idx_previo = 1
-                elif estado_previo == "Justificada": idx_previo = 2
-                
-                sel_estado = st.radio(
-                    f"Estado {al['alumno']}",
-                    ["Presente", "Ausente", "Justificada"],
-                    index=idx_previo,
-                    horizontal=True,
-                    key=f"asist_rad_{al['alumno']}",
-                    label_visibility="collapsed"
-                )
-                dict_nueva_asistencia[al["alumno"]] = sel_estado
-                
-        if st.button("Guardar Asistencia de Hoy", type="primary", use_container_width=True):
-            exito_asist = False
-            with st.spinner("Guardando registro de asistencia..."):
-                exito_asist = guardar_asistencia_diaria(usuario_actual, fecha_hoy, dict_nueva_asistencia)
-            if exito_asist:
-                st.session_state.aviso_asistencia_guardada = True
-                st.rerun()
-            else:
-                st.error("Error al guardar asistencia en Google Sheets.")
-                    
-        st.markdown("---")
-        st.markdown("#### Historial de Ausencias del Curso:")
-        conteo_faltas = {}
-        for a in asistencias_historico:
-            if a["estado"] in ["Ausente", "Justificada"]:
-                conteo_faltas[a["alumno"]] = conteo_faltas.get(a["alumno"], 0) + 1
-                
-        if not conteo_faltas:
-            st.info("¡Asistencia impecable! Aún no se registran ausencias en el aula.")
-        else:
-            for al_f, cant in conteo_faltas.items():
-                st.caption(f"• **{al_f}**: {cant} falta(s) acumulada(s)")
-
-    # 3. VIVENCIAS SIGNIFICATIVAS (DIARIO COGNITIVO)
-    with tab_vivencias:
-        st.markdown("### Evaluación Continua y Observación de Aula")
-        st.markdown(
-            "Cuéntale a Pinter con tus propias palabras qué ha ocurrido hoy en clase con tus peques. "
-            "Pinter detectará automáticamente a los alumnos de tu lista oficial, sus emociones, logros y conflictos."
-        )
-        
-        if st.session_state.pop("aviso_diario_guardado", False):
-            st.success("¡Registros guardados con éxito en el Diario Vivo y memoria pedagógica actualizada por Pinter!")
+        # 2. ASISTENCIA DIARIA PERSISTENTE
+        with tab_asistencia:
+            st.markdown(f"### Pase de Asistencia — {fecha_hoy}")
+            st.markdown("Marca la asistencia del grupo de hoy. Quedará registrada y acumulada día a día en tu Google Drive.")
             
-        if st.session_state.pop("limpiar_input_diario", False):
-            st.session_state["input_diario_dia"] = ""
-        
-        ejemplo_placeholder = (
-            "Ejemplo: Pinter, hoy ha faltado Hugo. Sofía ha tenido un momento de frustración con las construcciones matemáticas "
-            "porque se le caían las torres, pero Lucas se ha sentado a su lado, la ha ayudado y ha compartido sus piezas con mucha empatía. "
-            "Mateo ha participado con muchísima ilusión en la asamblea."
-        )
-        
-        texto_diario = st.text_area(
-            "¿Qué ha sucedido hoy en clase?", 
-            height=130, 
-            placeholder=ejemplo_placeholder,
-            key="input_diario_dia"
-        )
-        
-        if st.button("Analizar el día con Pinter", key="btn_analizar_diario", use_container_width=True):
-            if not texto_diario.strip():
-                st.warning("Escribe primero lo ocurrido hoy en el aula para que Pinter pueda ayudarte.")
+            if st.session_state.pop("aviso_asistencia_guardada", False):
+                st.success("¡Asistencia de hoy registrada con éxito en Google Drive!")
+            
+            dict_nueva_asistencia = {}
+            for al in alumnos_registrados:
+                c_nom, c_est = st.columns([0.4, 0.6])
+                with c_nom:
+                    st.markdown(f"**{al['alumno']}**")
+                with c_est:
+                    estado_previo = asistencias_hoy.get(al["alumno"], "Presente")
+                    idx_previo = 0
+                    if estado_previo == "Ausente": idx_previo = 1
+                    elif estado_previo == "Justificada": idx_previo = 2
+                    
+                    sel_estado = st.radio(
+                        f"Estado {al['alumno']}",
+                        ["Presente", "Ausente", "Justificada"],
+                        index=idx_previo,
+                        horizontal=True,
+                        key=f"asist_rad_{al['alumno']}",
+                        label_visibility="collapsed"
+                    )
+                    dict_nueva_asistencia[al["alumno"]] = sel_estado
+                    
+            if st.button("Guardar Asistencia de Hoy", type="primary", use_container_width=True):
+                exito_asist = False
+                with st.spinner("Guardando registro de asistencia..."):
+                    exito_asist = guardar_asistencia_diaria(usuario_actual, fecha_hoy, dict_nueva_asistencia)
+                if exito_asist:
+                    st.session_state.aviso_asistencia_guardada = True
+                    st.rerun()
+                else:
+                    st.error("Error al guardar asistencia en Google Sheets.")
+                        
+            st.markdown("---")
+            st.markdown("#### Historial de Ausencias del Curso:")
+            conteo_faltas = {}
+            for a in asistencias_historico:
+                if a["estado"] in ["Ausente", "Justificada"]:
+                    conteo_faltas[a["alumno"]] = conteo_faltas.get(a["alumno"], 0) + 1
+                    
+            if not conteo_faltas:
+                st.info("¡Asistencia impecable! Aún no se registran ausencias en el aula.")
             else:
-                datos_extraidos = None
-                with st.spinner("Pinter está escuchando con atención, extrayendo las vivencias y organizando a tus peques..."):
-                    prompt_diario = f"""
+                for al_f, cant in conteo_faltas.items():
+                    st.caption(f"• **{al_f}**: {cant} falta(s) acumulada(s)")
+
+        # 3. VIVENCIAS SIGNIFICATIVAS (DIARIO COGNITIVO)
+        with tab_vivencias:
+            st.markdown("### Evaluación Continua y Observación de Aula")
+            st.markdown(
+                "Cuéntale a Pinter con tus propias palabras qué ha ocurrido hoy en clase con tus peques. "
+                "Pinter detectará automáticamente a los alumnos de tu lista oficial, sus emociones, logros y conflictos."
+            )
+            
+            if st.session_state.pop("aviso_diario_guardado", False):
+                st.success("¡Registros guardados con éxito en el Diario Vivo y memoria pedagógica actualizada por Pinter!")
+                
+            if st.session_state.pop("limpiar_input_diario", False):
+                st.session_state["input_diario_dia"] = ""
+            
+            ejemplo_placeholder = (
+                "Ejemplo: Pinter, hoy ha faltado Hugo. Sofía ha tenido un momento de frustración con las construcciones matemáticas "
+                "porque se le caían las torres, pero Lucas se ha sentado a su lado, la ha ayudado y ha compartido sus piezas con mucha empatía. "
+                "Mateo ha participado con muchísima ilusión en la asamblea."
+            )
+            
+            texto_diario = st.text_area(
+                "¿Qué ha sucedido hoy en clase?", 
+                height=130, 
+                placeholder=ejemplo_placeholder,
+                key="input_diario_dia"
+            )
+            
+            if st.button("Analizar el día con Pinter", key="btn_analizar_diario", use_container_width=True):
+                if not texto_diario.strip():
+                    st.warning("Escribe primero lo ocurrido hoy en el aula para que Pinter pueda ayudarte.")
+                else:
+                    datos_extraidos = None
+                    with st.spinner("Pinter está escuchando con atención, extrayendo las vivencias y organizando a tus peques..."):
+                        prompt_diario = f"""
 Actúa como Pinter, el copiloto pedagógico de Inteligencia Artificial para el docente de Educación Infantil.
 
 PRINCIPIO FUNDAMENTAL E INDELEGABLE:
@@ -1147,264 +1225,264 @@ Tu tarea es extraer a cada alumno mencionado y devolver estrictamente un JSON v�
 
 Responde ÚNICAMENTE con el bloque JSON crudo (sin ```json ni texto introductorio).
 """
-                    try:
-                        resp_gemini = model.generate_content(prompt_diario.strip()).text
-                        json_limpio = resp_gemini.strip()
-                        if json_limpio.startswith("```"):
-                            json_limpio = json_limpio.split("\n", 1)[1]
-                        if json_limpio.endswith("```"):
-                            json_limpio = json_limpio.rsplit("```", 1)[0]
-                        datos_extraidos = json.loads(json_limpio.strip())
-                    except Exception as e:
-                        st.error(f"Hubo un problema al interpretar la observación: {e}")
-                        
-                if datos_extraidos:
-                    st.session_state.diario_resultado_temp = datos_extraidos
-                    st.session_state.diario_texto_temp = texto_diario
-                    st.rerun()
-                        
-        if "diario_resultado_temp" in st.session_state and st.session_state.diario_resultado_temp:
-            res_datos = st.session_state.diario_resultado_temp
-            st.markdown("---")
-            st.info(f"**Pinter dice:** {res_datos.get('resumen_pinter', 'Observaciones analizadas correctamente.')}")
-            
-            st.markdown("#### Registros identificados por alumno:")
-            regs = res_datos.get("registros", [])
-            if not regs:
-                st.warning("Pinter no ha podido identificar nombres concretos de alumnos. Asegúrate de incluir los nombres (ej: Sofía, Hugo, Lucas).")
-            else:
-                for idx, r in enumerate(regs):
-                    alumno_nom = r.get("alumno", "Peque")
-                    cat = r.get("categoria", "General")
-                    est = r.get("estado", "Observación")
-                    det = r.get("detalle", "")
-                    sug = r.get("sugerencia", "")
-                    alerta = r.get("alerta_intervencion", False)
-                    alerta_txt = " [Alerta]" if alerta else ""
-                        
-                    with st.expander(f"**{alumno_nom}** — *{cat}* ({est}){alerta_txt}", expanded=True):
-                        st.markdown(f"**Detalle pedagógico:** {det}")
-                        if sug:
-                            st.caption(f"*Sugerencia de Pinter:* {sug}")
+                        try:
+                            resp_gemini = model.generate_content(prompt_diario.strip()).text
+                            json_limpio = resp_gemini.strip()
+                            if json_limpio.startswith("```"):
+                                json_limpio = json_limpio.split("\n", 1)[1]
+                            if json_limpio.endswith("```"):
+                                json_limpio = json_limpio.rsplit("```", 1)[0]
+                            datos_extraidos = json.loads(json_limpio.strip())
+                        except Exception as e:
+                            st.error(f"Hubo un problema al interpretar la observación: {e}")
                             
-                st.write("")
-                col_btn_guardar, col_btn_descartar = st.columns([0.7, 0.3])
-                with col_btn_guardar:
-                    btn_guardar_diario = st.button("Confirmar y Guardar en el Diario Vivo", type="primary", use_container_width=True, key="btn_confirmar_diario")
-                with col_btn_descartar:
-                    btn_descartar = st.button("Descartar", use_container_width=True, key="btn_descartar_diario")
-                    
-                if btn_descartar:
-                    st.session_state.pop("diario_resultado_temp", None)
-                    st.session_state.pop("diario_texto_temp", None)
-                    st.rerun()
-                    
-                if btn_guardar_diario:
-                    exito_guardar = False
-                    with st.spinner("Guardando registros y actualizando la memoria evolutiva con Pinter..."):
-                        exito_guardar = guardar_en_diario_aula(
-                            usuario_actual, 
-                            regs, 
-                            st.session_state.get("diario_texto_temp", "")
-                        )
-                        if exito_guardar:
-                            dict_ctx = {}
-                            for r in regs:
-                                nom_r = r.get("alumno", "").strip()
-                                if not nom_r or nom_r.lower() in ["sin nombre", "peque"]:
-                                    continue
-                                al_oficial = next((a for a in alumnos_registrados if coincide_alumno(nom_r, a["alumno"])), None)
-                                if al_oficial:
-                                    nom_canonico = al_oficial["alumno"]
-                                    if nom_canonico not in dict_ctx:
-                                        inf_ini = al_oficial.get("informe") or "Sin informe inicial previo."
-                                        mem_prev = al_oficial.get("memoria_evolutiva") or "Sin memoria previa registrada."
-                                        dict_ctx[nom_canonico] = {
-                                            "informe_inicial": inf_ini,
-                                            "memoria_previa": mem_prev,
-                                            "observaciones_hoy_lista": []
-                                        }
-                                    dict_ctx[nom_canonico]["observaciones_hoy_lista"].append(
-                                        f"[{r.get('categoria', 'General')}] ({r.get('estado', 'Observación')}): {r.get('detalle', '')}"
-                                    )
-                                else:
-                                    nom_cap = nom_r.capitalize()
-                                    if nom_cap not in dict_ctx:
-                                        dict_ctx[nom_cap] = {
-                                            "informe_inicial": "Sin informe previo.",
-                                            "memoria_previa": "Sin memoria previa registrada.",
-                                            "observaciones_hoy_lista": []
-                                        }
-                                    dict_ctx[nom_cap]["observaciones_hoy_lista"].append(
-                                        f"[{r.get('categoria', 'General')}] ({r.get('estado', 'Observación')}): {r.get('detalle', '')}"
-                                    )
-                                    
-                            if dict_ctx:
-                                dict_para_sintesis = {}
-                                for nom_k, datos_k in dict_ctx.items():
-                                    dict_para_sintesis[nom_k] = {
-                                        "informe_inicial": datos_k["informe_inicial"],
-                                        "memoria_previa": datos_k["memoria_previa"],
-                                        "observaciones_hoy": "; ".join(datos_k["observaciones_hoy_lista"])
-                                    }
-                                res_mem = sintetizar_memoria_evolutiva(model, dict_para_sintesis, fecha_hoy)
-                                if res_mem:
-                                    actualizar_memoria_evolutiva_alumnos(usuario_actual, res_mem)
-
-                    if exito_guardar:
-                        st.session_state.aviso_diario_guardado = True
-                        st.session_state.limpiar_input_diario = True
+                    if datos_extraidos:
+                        st.session_state.diario_resultado_temp = datos_extraidos
+                        st.session_state.diario_texto_temp = texto_diario
+                        st.rerun()
+                            
+            if "diario_resultado_temp" in st.session_state and st.session_state.diario_resultado_temp:
+                res_datos = st.session_state.diario_resultado_temp
+                st.markdown("---")
+                st.info(f"**Pinter dice:** {res_datos.get('resumen_pinter', 'Observaciones analizadas correctamente.')}")
+                
+                st.markdown("#### Registros identificados por alumno:")
+                regs = res_datos.get("registros", [])
+                if not regs:
+                    st.warning("Pinter no ha podido identificar nombres concretos de alumnos. Asegúrate de incluir los nombres (ej: Sofía, Hugo, Lucas).")
+                else:
+                    for idx, r in enumerate(regs):
+                        alumno_nom = r.get("alumno", "Peque")
+                        cat = r.get("categoria", "General")
+                        est = r.get("estado", "Observación")
+                        det = r.get("detalle", "")
+                        sug = r.get("sugerencia", "")
+                        alerta = r.get("alerta_intervencion", False)
+                        alerta_txt = " [Alerta]" if alerta else ""
+                            
+                        with st.expander(f"**{alumno_nom}** — *{cat}* ({est}){alerta_txt}", expanded=True):
+                            st.markdown(f"**Detalle pedagógico:** {det}")
+                            if sug:
+                                st.caption(f"*Sugerencia de Pinter:* {sug}")
+                                
+                    st.write("")
+                    col_btn_guardar, col_btn_descartar = st.columns([0.7, 0.3])
+                    with col_btn_guardar:
+                        btn_guardar_diario = st.button("Confirmar y Guardar en el Diario Vivo", type="primary", use_container_width=True, key="btn_confirmar_diario")
+                    with col_btn_descartar:
+                        btn_descartar = st.button("Descartar", use_container_width=True, key="btn_descartar_diario")
+                        
+                    if btn_descartar:
                         st.session_state.pop("diario_resultado_temp", None)
                         st.session_state.pop("diario_texto_temp", None)
                         st.rerun()
-                    else:
-                        st.error("No se pudo conectar con Google Sheets. Revisa la conexión.")
+                        
+                    if btn_guardar_diario:
+                        exito_guardar = False
+                        with st.spinner("Guardando registros y actualizando la memoria evolutiva con Pinter..."):
+                            exito_guardar = guardar_en_diario_aula(
+                                usuario_actual, 
+                                regs, 
+                                st.session_state.get("diario_texto_temp", "")
+                            )
+                            if exito_guardar:
+                                dict_ctx = {}
+                                for r in regs:
+                                    nom_r = r.get("alumno", "").strip()
+                                    if not nom_r or nom_r.lower() in ["sin nombre", "peque"]:
+                                        continue
+                                    al_oficial = next((a for a in alumnos_registrados if coincide_alumno(nom_r, a["alumno"])), None)
+                                    if al_oficial:
+                                        nom_canonico = al_oficial["alumno"]
+                                        if nom_canonico not in dict_ctx:
+                                            inf_ini = al_oficial.get("informe") or "Sin informe inicial previo."
+                                            mem_prev = al_oficial.get("memoria_evolutiva") or "Sin memoria previa registrada."
+                                            dict_ctx[nom_canonico] = {
+                                                "informe_inicial": inf_ini,
+                                                "memoria_previa": mem_prev,
+                                                "observaciones_hoy_lista": []
+                                            }
+                                        dict_ctx[nom_canonico]["observaciones_hoy_lista"].append(
+                                            f"[{r.get('categoria', 'General')}] ({r.get('estado', 'Observación')}): {r.get('detalle', '')}"
+                                        )
+                                    else:
+                                        nom_cap = nom_r.capitalize()
+                                        if nom_cap not in dict_ctx:
+                                            dict_ctx[nom_cap] = {
+                                                "informe_inicial": "Sin informe previo.",
+                                                "memoria_previa": "Sin memoria previa registrada.",
+                                                "observaciones_hoy_lista": []
+                                            }
+                                        dict_ctx[nom_cap]["observaciones_hoy_lista"].append(
+                                            f"[{r.get('categoria', 'General')}] ({r.get('estado', 'Observación')}): {r.get('detalle', '')}"
+                                        )
+                                        
+                                if dict_ctx:
+                                    dict_para_sintesis = {}
+                                    for nom_k, datos_k in dict_ctx.items():
+                                        dict_para_sintesis[nom_k] = {
+                                            "informe_inicial": datos_k["informe_inicial"],
+                                            "memoria_previa": datos_k["memoria_previa"],
+                                            "observaciones_hoy": "; ".join(datos_k["observaciones_hoy_lista"])
+                                        }
+                                    res_mem = sintetizar_memoria_evolutiva(model, dict_para_sintesis, fecha_hoy)
+                                    if res_mem:
+                                        actualizar_memoria_evolutiva_alumnos(usuario_actual, res_mem)
 
-    # 4. RADAR DEL AULA & ALERTAS
-    with tab_radar:
-        st.markdown("### Radar de Bienestar y Alertas Pedagógicas")
-        st.caption(
-            "Herramienta copiloto de detección de patrones temporales: apoya la mirada formativa del docente identificando recurrencias observables. "
-            "En ningún caso emite diagnósticos clínicos ni calificaciones. La valoración axiológica y la decisión corresponden de forma indelegable al educador."
-        )
-        if not registros_historicos:
-            st.info("Aún no tienes vivencias guardadas en el Diario Vivo. Ve a la pestaña **'Vivencias Significativas'** para registrar tu primera jornada.")
-        else:
-            total_obs = len(registros_historicos)
-            alumnos_con_notas = sorted(list(set(r["alumno"] for r in registros_historicos if r.get("alumno"))))
-            
-            c_kpi1, c_kpi2, c_kpi3 = st.columns(3)
-            c_kpi1.metric("Observaciones registradas", total_obs)
-            c_kpi2.metric("Alumnos con seguimiento", len(alumnos_con_notas))
-            c_kpi3.metric("Última actualización", registros_historicos[-1]["fecha"])
-            
-            st.markdown("---")
-            st.markdown("#### Alertas Pedagógicas Proactivas:")
-            
-            alumnos_frustracion = {}
-            for reg in registros_historicos:
-                al = reg["alumno"]
-                est = reg["estado"].lower()
-                if "frustra" in est or "conflicto" in est or "rabiet" in est or "triste" in est or "bloqueo" in est:
-                    alumnos_frustracion[al] = alumnos_frustracion.get(al, 0) + 1
-                    
-            hay_alertas = False
-            for al, veces in alumnos_frustracion.items():
-                if veces >= 1:
-                    hay_alertas = True
-                    st.warning(
-                        f"**Patrón temporal detectado:** **{al}** acumula **{veces} registro(s)** recientes con observaciones de frustración, bloqueo o dificultad. Orientación pedagógica sugerida para valoración del docente:"
-                    )
-                    c_act1, c_act2 = st.columns(2)
-                    with c_act1:
-                        if st.button(f"Crear Cuento Terapéutico para {al}", key=f"btn_cuento_rad_{al}"):
-                            st.session_state.precarga_cuento_prob = f"Manejo de la frustración, paciencia y calma para {al}"
-                            st.session_state.precarga_cuento_inte = "Animales del bosque y superpoderes"
-                            st.session_state.modo = "Cuentos Terapéuticos"
+                        if exito_guardar:
+                            st.session_state.aviso_diario_guardado = True
+                            st.session_state.limpiar_input_diario = True
+                            st.session_state.pop("diario_resultado_temp", None)
+                            st.session_state.pop("diario_texto_temp", None)
                             st.rerun()
-                    with c_act2:
-                        if st.button(f"Diseñar Reto ABN de Apoyo para {al}", key=f"btn_abn_rad_{al}"):
-                            st.session_state.precarga_abn_obj = f"Reforzar la confianza y motivación matemática mediante manipulación lúdica (apoyo para {al})"
-                            st.session_state.precarga_abn_mat = "Bandejas, tapones y pegatinas de colores"
-                            st.session_state.modo = "Diseñador ABN & Retos"
-                            st.rerun()
-                            
-            if not hay_alertas:
-                st.success("El clima del aula es favorable. No se detectan patrones de alerta o frustración reiterada en este momento.")
+                        else:
+                            st.error("No se pudo conectar con Google Sheets. Revisa la conexión.")
+
+        # 4. RADAR DEL AULA & ALERTAS
+        with tab_radar:
+            st.markdown("### Radar de Bienestar y Alertas Pedagógicas")
+            st.caption(
+                "Herramienta copiloto de detección de patrones temporales: apoya la mirada formativa del docente identificando recurrencias observables. "
+                "En ningún caso emite diagnósticos clínicos ni calificaciones. La valoración axiológica y la decisión corresponden de forma indelegable al educador."
+            )
+            if not registros_historicos:
+                st.info("Aún no tienes vivencias guardadas en el Diario Vivo. Ve a la pestaña **'Vivencias Significativas'** para registrar tu primera jornada.")
+            else:
+                total_obs = len(registros_historicos)
+                alumnos_con_notas = sorted(list(set(r["alumno"] for r in registros_historicos if r.get("alumno"))))
                 
-            st.markdown("---")
-            st.markdown("#### Histórico de Clima Emocional Reciente:")
-            ultimos = registros_historicos[-6:]
-            for u in reversed(ultimos):
-                st.caption(f"**{u['fecha']}** | **{u['alumno']}** ({u['categoria']}) : {u['detalle']}")
-
-    # 5. GESTIÓN & FIN DE CURSO
-    with tab_gestion:
-        st.markdown("### Gestión del Alumnado y Fin de Curso")
-        
-        if st.session_state.pop("aviso_fin_curso", False):
-            st.success("¡Curso escolar finalizado con éxito! El aula se ha reiniciado y está lista para el nuevo grupo.")
-        if st.session_state.pop("aviso_aula_creada", False):
-            st.success("¡Aula configurada con éxito! Ya tienes a tus peques registrados.")
-        alumno_anadido = st.session_state.pop("aviso_alumno_anadido", None)
-        if alumno_anadido:
-            st.success(f"¡{alumno_anadido} añadido al aula con éxito!")
-            
-        if not alumnos_registrados:
-            st.info("**Configuración del Nuevo Curso Escolar**")
-            st.markdown(
-                "Indica cuántos alumnos tienes en clase y escribe el nombre y el informe individualizado inicial "
-                "de cada uno (su punto de partida formativo, gustos, necesidades de acompañamiento o personalidad). "
-                "Esta información quedará guardada de forma 100% permanente durante todo el curso escolar."
-            )
-            
-            num_alumnos = st.number_input("Número de alumnos en el aula:", min_value=1, max_value=40, value=6, step=1)
-            
-            with st.form("form_inicio_curso"):
-                nuevos_alumnos = []
-                for i in range(int(num_alumnos)):
-                    st.markdown(f"**Peque #{i+1}**")
-                    col_n, col_inf = st.columns([0.35, 0.65])
-                    with col_n:
-                        n_al = st.text_input(f"Nombre Alumno #{i+1}", key=f"nom_ini_{i}", placeholder="Ej: Sofía Gómez")
-                    with col_inf:
-                        i_al = st.text_area(f"Informe inicial individualizado #{i+1}", key=f"inf_ini_{i}", height=70, placeholder="Ej: Muy cariñosa y atenta. Muestra algo de frustración si no le salen los bloques. Le apasionan los dinosaurios.")
-                    nuevos_alumnos.append({"alumno": n_al, "informe": i_al})
+                c_kpi1, c_kpi2, c_kpi3 = st.columns(3)
+                c_kpi1.metric("Observaciones registradas", total_obs)
+                c_kpi2.metric("Alumnos con seguimiento", len(alumnos_con_notas))
+                c_kpi3.metric("Última actualización", registros_historicos[-1]["fecha"])
+                
+                st.markdown("---")
+                st.markdown("#### Alertas Pedagógicas Proactivas:")
+                
+                alumnos_frustracion = {}
+                for reg in registros_historicos:
+                    al = reg["alumno"]
+                    est = reg["estado"].lower()
+                    if "frustra" in est or "conflicto" in est or "rabiet" in est or "triste" in est or "bloqueo" in est:
+                        alumnos_frustracion[al] = alumnos_frustracion.get(al, 0) + 1
+                        
+                hay_alertas = False
+                for al, veces in alumnos_frustracion.items():
+                    if veces >= 1:
+                        hay_alertas = True
+                        st.warning(
+                            f"**Patrón temporal detectado:** **{al}** acumula **{veces} registro(s)** recientes con observaciones de frustración, bloqueo o dificultad. Orientación pedagógica sugerida para valoración del docente:"
+                        )
+                        c_act1, c_act2 = st.columns(2)
+                        with c_act1:
+                            if st.button(f"Crear Cuento Terapéutico para {al}", key=f"btn_cuento_rad_{al}"):
+                                st.session_state.precarga_cuento_prob = f"Manejo de la frustración, paciencia y calma para {al}"
+                                st.session_state.precarga_cuento_inte = "Animales del bosque y superpoderes"
+                                st.session_state.modo = "Cuentos Terapéuticos"
+                                st.rerun()
+                        with c_act2:
+                            if st.button(f"Diseñar Reto ABN de Apoyo para {al}", key=f"btn_abn_rad_{al}"):
+                                st.session_state.precarga_abn_obj = f"Reforzar la confianza y motivación matemática mediante manipulación lúdica (apoyo para {al})"
+                                st.session_state.precarga_abn_mat = "Bandejas, tapones y pegatinas de colores"
+                                st.session_state.modo = "Diseñador ABN & Retos"
+                                st.rerun()
+                                
+                if not hay_alertas:
+                    st.success("El clima del aula es favorable. No se detectan patrones de alerta o frustración reiterada en este momento.")
                     
-                btn_guardar_curso = st.form_submit_button("Guardar Alumnado y Comenzar Curso Escolar", type="primary", use_container_width=True)
-                if btn_guardar_curso:
-                    validos = [a for a in nuevos_alumnos if a["alumno"].strip()]
-                    if not validos:
-                        st.error("Por favor, introduce al menos el nombre de un alumno para comenzar.")
-                    else:
-                        exito_curso = False
-                        with st.spinner("Creando el aula en Google Drive..."):
-                            exito_curso = guardar_alumnos_aula(usuario_actual, validos)
-                        if exito_curso:
-                            st.session_state.aviso_aula_creada = True
-                            st.rerun()
-                        else:
-                            st.error("Error al conectar con Google Sheets. Revisa la conexión.")
-        else:
-            st.markdown("#### Matricular nuevo alumno a mitad de curso:")
-            with st.form("form_alta_individual"):
-                col_n1, col_inf1 = st.columns([0.35, 0.65])
-                with col_n1:
-                    nom_nuevo = st.text_input("Nombre del nuevo alumno:", placeholder="Ej: Mateo Ruiz")
-                with col_inf1:
-                    inf_nuevo = st.text_area("Informe individualizado inicial:", height=70, placeholder="Ej: Recién llegado del centro X. Le gusta pintar y jugar con arena.")
-                if st.form_submit_button("Añadir Alumno al Aula"):
-                    if not nom_nuevo.strip():
-                        st.error("Introduce el nombre del alumno.")
-                    else:
-                        exito_nuevo = False
-                        with st.spinner("Guardando nuevo alumno en Google Drive..."):
-                            exito_nuevo = guardar_alumnos_aula(usuario_actual, [{"alumno": nom_nuevo, "informe": inf_nuevo}])
-                        if exito_nuevo:
-                            st.session_state.aviso_alumno_anadido = nom_nuevo
-                            st.rerun()
-                        else:
-                            st.error("Error al guardar alumno.")
-                            
-            st.divider()
-            st.markdown("#### Cierre de Periodo Lectivo: Finalizar Curso Escolar")
-            st.markdown(
-                "Cuando termine el curso escolar en junio, puedes pulsar este botón para **cerrar y reiniciar el aula**. "
-                "Esto borrará los alumnos, asistencias y notas de este curso para que puedas configurar el aula del año que viene desde cero."
-            )
+                st.markdown("---")
+                st.markdown("#### Histórico de Clima Emocional Reciente:")
+                ultimos = registros_historicos[-6:]
+                for u in reversed(ultimos):
+                    st.caption(f"**{u['fecha']}** | **{u['alumno']}** ({u['categoria']}) : {u['detalle']}")
+
+        # 5. GESTIÓN & FIN DE CURSO
+        with tab_gestion:
+            st.markdown("### Gestión del Alumnado y Fin de Curso")
             
-            check_fin = st.checkbox("Confirmo que el curso escolar ha finalizado y deseo reiniciar los datos del aula para el próximo año.", key="check_fin_curso")
-            if st.button("Finalizar Curso Escolar y Reiniciar Aula", type="primary", disabled=not check_fin):
-                exito_fin = False
-                with st.spinner("Finalizando curso y reseteando aula en Google Drive..."):
-                    exito_fin = finalizar_curso_docente(usuario_actual)
-                if exito_fin:
-                    for k in ["diario_resultado_temp", "diario_texto_temp", "input_diario_dia"]:
-                        st.session_state.pop(k, None)
-                    st.session_state.aviso_fin_curso = True
-                    st.rerun()
-                else:
-                    st.error("Error al resetear los datos del curso en Google Sheets.")
+            if st.session_state.pop("aviso_fin_curso", False):
+                st.success("¡Curso escolar finalizado con éxito! El aula se ha reiniciado y está lista para el nuevo grupo.")
+            if st.session_state.pop("aviso_aula_creada", False):
+                st.success("¡Aula configurada con éxito! Ya tienes a tus peques registrados.")
+            alumno_anadido = st.session_state.pop("aviso_alumno_anadido", None)
+            if alumno_anadido:
+                st.success(f"¡{alumno_anadido} añadido al aula con éxito!")
+                
+            if not alumnos_registrados:
+                st.info("**Configuración del Nuevo Curso Escolar**")
+                st.markdown(
+                    "Indica cuántos alumnos tienes en clase y escribe el nombre y el informe individualizado inicial "
+                    "de cada uno (su punto de partida formativo, gustos, necesidades de acompañamiento o personalidad). "
+                    "Esta información quedará guardada de forma 100% permanente durante todo el curso escolar."
+                )
+                
+                num_alumnos = st.number_input("Número de alumnos en el aula:", min_value=1, max_value=40, value=6, step=1)
+                
+                with st.form("form_inicio_curso"):
+                    nuevos_alumnos = []
+                    for i in range(int(num_alumnos)):
+                        st.markdown(f"**Peque #{i+1}**")
+                        col_n, col_inf = st.columns([0.35, 0.65])
+                        with col_n:
+                            n_al = st.text_input(f"Nombre Alumno #{i+1}", key=f"nom_ini_{i}", placeholder="Ej: Sofía Gómez")
+                        with col_inf:
+                            i_al = st.text_area(f"Informe inicial individualizado #{i+1}", key=f"inf_ini_{i}", height=70, placeholder="Ej: Muy cariñosa y atenta. Muestra algo de frustración si no le salen los bloques. Le apasionan los dinosaurios.")
+                        nuevos_alumnos.append({"alumno": n_al, "informe": i_al})
+                        
+                    btn_guardar_curso = st.form_submit_button("Guardar Alumnado y Comenzar Curso Escolar", type="primary", use_container_width=True)
+                    if btn_guardar_curso:
+                        validos = [a for a in nuevos_alumnos if a["alumno"].strip()]
+                        if not validos:
+                            st.error("Por favor, introduce al menos el nombre de un alumno para comenzar.")
+                        else:
+                            exito_curso = False
+                            with st.spinner("Creando el aula en Google Drive..."):
+                                exito_curso = guardar_alumnos_aula(usuario_actual, validos)
+                            if exito_curso:
+                                st.session_state.aviso_aula_creada = True
+                                st.rerun()
+                            else:
+                                st.error("Error al conectar con Google Sheets. Revisa la conexión.")
+            else:
+                st.markdown("#### Matricular nuevo alumno a mitad de curso:")
+                with st.form("form_alta_individual"):
+                    col_n1, col_inf1 = st.columns([0.35, 0.65])
+                    with col_n1:
+                        nom_nuevo = st.text_input("Nombre del nuevo alumno:", placeholder="Ej: Mateo Ruiz")
+                    with col_inf1:
+                        inf_nuevo = st.text_area("Informe individualizado inicial:", height=70, placeholder="Ej: Recién llegado del centro X. Le gusta pintar y jugar con arena.")
+                    if st.form_submit_button("Añadir Alumno al Aula"):
+                        if not nom_nuevo.strip():
+                            st.error("Introduce el nombre del alumno.")
+                        else:
+                            exito_nuevo = False
+                            with st.spinner("Guardando nuevo alumno en Google Drive..."):
+                                exito_nuevo = guardar_alumnos_aula(usuario_actual, [{"alumno": nom_nuevo, "informe": inf_nuevo}])
+                            if exito_nuevo:
+                                st.session_state.aviso_alumno_anadido = nom_nuevo
+                                st.rerun()
+                            else:
+                                st.error("Error al guardar alumno.")
+                                
+                st.divider()
+                st.markdown("#### Cierre de Periodo Lectivo: Finalizar Curso Escolar")
+                st.markdown(
+                    "Cuando termine el curso escolar en junio, puedes pulsar este botón para **cerrar y reiniciar el aula**. "
+                    "Esto borrará los alumnos, asistencias y notas de este curso para que puedas configurar el aula del año que viene desde cero."
+                )
+                
+                check_fin = st.checkbox("Confirmo que el curso escolar ha finalizado y deseo reiniciar los datos del aula para el próximo año.", key="check_fin_curso")
+                if st.button("Finalizar Curso Escolar y Reiniciar Aula", type="primary", disabled=not check_fin):
+                    exito_fin = False
+                    with st.spinner("Finalizando curso y reseteando aula en Google Drive..."):
+                        exito_fin = finalizar_curso_docente(usuario_actual)
+                    if exito_fin:
+                        for k in ["diario_resultado_temp", "diario_texto_temp", "input_diario_dia"]:
+                            st.session_state.pop(k, None)
+                        st.session_state.aviso_fin_curso = True
+                        st.rerun()
+                    else:
+                        st.error("Error al resetear los datos del curso en Google Sheets.")
 
 elif modo == "Traductor Pedagógico (LOMLOE)":
     st.empty() # Limpiar residuos previos
@@ -1428,7 +1506,7 @@ elif modo == "Traductor Pedagógico (LOMLOE)":
         obs = st.text_area("Observación / Expediente del Alumno:", key="input_traductor_obs", height=200)
         ctx = st.text_input("Contexto:", key="input_traductor_ctx")
         if st.button("Generar"):
-            with st.spinner("Redactando informe curricular completo..."):
+            with st.spinner("Redactando informe curricular oficial (LOMLOE + DUA)..."):
                 prompt_traductor = f"""
 Actúa como un/a maestro/a experto/a en Educación Infantil y normativa LOMLOE, ejerciendo como copiloto de apoyo a la redacción pedagógica.
 
@@ -1441,22 +1519,22 @@ A partir de la información u observación pedagógica del docente:
 y el contexto de evaluación: '{ctx}', genera un informe técnico curricular exhaustivo y formal desglosado estrictamente en 3 bloques (usa Markdown):
 
 ### 1. Doble Redacción del Informe
-- **Versión Familias:** Redacta un texto con tono empático, claro, constructivo y cercano, adecuado para un boletín de notas o tutoría, que sintetice los logros, la trayectoria emocional y la evolución del alumno sin juicios estigmatizantes ni calificaciones sumativas.
-- **Versión Acta/Inspección:** Redacta la misma información con un registro formal, técnico, objetivo y pedagógico, apto para el expediente curricular oficial del centro educativo.
+* **Versión Familias:** Redacta un texto con tono empático, claro, constructivo y cercano, adecuado para un boletín de notas o tutoría, que sintetice los logros, la trayectoria emocional y la evolución del alumno sin juicios estigmatizantes ni calificaciones sumativas.
+* **Versión Acta/Inspección:** Redacta la misma información con un registro formal, técnico, objetivo y pedagógico, apto para el expediente curricular oficial del centro educativo.
 
 ### 2. Vinculación LOMLOE Automática
 Identifica y lista con precisión los elementos curriculares de Educación Infantil asociados a los aprendizajes y conductas observadas:
-- **Competencias Específicas:** (Enuméralas con su descripción curricular)
-- **Criterios de Evaluación:** (Enuméralos con su vinculación formativa)
-- **Saberes Básicos:** (Enuméralos correspondientes a las áreas curriculares de Infantil)
+* **Competencias Específicas:** (Enuméralas con su descripción curricular)
+* **Criterios de Evaluación:** (Enuméralos con su vinculación formativa)
+* **Saberes Básicos:** (Enuméralos correspondientes a las áreas curriculares de Infantil)
 
 ### 3. Propuesta de Intervención (DUA)
 Añade dos (2) orientaciones metodológicas prácticas basadas en el Diseño Universal para el Aprendizaje (DUA) para reforzar o intervenir pedagógicamente en el aula según las necesidades y focos de apoyo detectados, formuladas como sugerencias para consideración del docente.
 
 Responde ÚNICAMENTE con los bloques solicitados, sin introducciones ni despedidas conversacionales.
 """
-            res = model.generate_content(prompt_traductor.strip()).text
-            st.session_state.trad_res, st.session_state.trad_in = res, f"{obs} | {ctx}"
+                res = model.generate_content(prompt_traductor.strip()).text
+                st.session_state.trad_res, st.session_state.trad_in = res, f"{obs} | {ctx}"
     with c2:
         if "trad_res" in st.session_state:
             st.write(st.session_state.trad_res)
@@ -1912,21 +1990,21 @@ Actúa como un maestro experto en el método matemático ABN para Educación Inf
 A partir del Objetivo: '{obj}' y los Materiales disponibles: '{mat}', diseña una ficha de programación de aula lista para imprimir, estructurada estrictamente en los siguientes bloques en Markdown:
 
 ### 1. Ficha Técnica
-- **Fase Matemática:** (Ej: conteo, descomposición, reparto, complementarios del 10, etc.)
-- **Organización Espacial:** (Ej: gran grupo, rincones, parejas)
-- **Tiempo Estimado:** (Ej: 15-20 minutos)
+* **Fase Matemática:** (Ej: conteo, descomposición, reparto, complementarios del 10, etc.)
+* **Organización Espacial:** (Ej: gran grupo, rincones, parejas)
+* **Tiempo Estimado:** (Ej: 15-20 minutos)
 
 ### 2. Desarrollo de la Actividad (3 Niveles DUA)
 Explica cómo llevar a cabo la actividad adaptada a tres ritmos de aprendizaje:
-- **Nivel Apoyo:** (Manipulación guiada paso a paso para alumnado que necesita más ayuda).
-- **Nivel Estándar:** (Ejecución autónoma esperada para la mayoría del grupo).
-- **Nivel Reto:** (Variante de mayor abstracción o dificultad para alumnado avanzado).
+* **Nivel Apoyo:** (Manipulación guiada paso a paso para alumnado que necesita más ayuda).
+* **Nivel Estándar:** (Ejecución autónoma esperada para la mayoría del grupo).
+* **Nivel Reto:** (Variante de mayor abstracción o dificultad para alumnado avanzado).
 
 ### 3. Rúbrica de Observación Rápida
 Proporciona 3 indicadores clave y observables para evaluar en directo durante la actividad, categorizados en:
-- **Conseguido:** (Descripción de lo que hace el alumno)
-- **En proceso:** (Descripción de lo que hace el alumno)
-- **No iniciado:** (Descripción de lo que hace el alumno)
+* **Conseguido:** (Descripción de lo que hace el alumno)
+* **En proceso:** (Descripción de lo que hace el alumno)
+* **No iniciado:** (Descripción de lo que hace el alumno)
 
 Responde directamente con los bloques, sin saludos ni introducciones.
 """
@@ -1941,26 +2019,12 @@ Responde directamente con los bloques, sin saludos ni introducciones.
 elif modo == "Chat Asistente General":
     st.empty()
     crear_encabezado("Asistente", 4)
-    if "chat" not in st.session_state:
-        st.session_state.chat = [
-            {"role": "assistant", "content": "¡Hola! Soy Pinter 🐰, tu mascota y asistente de aula. ¿Qué reto pedagógico resolvemos hoy?"}
-        ]
-        
-    for m in st.session_state.chat:
-        if m["role"] == "assistant":
-            st.chat_message(m["role"], avatar="🐰").write(m["content"])
-        else:
-            st.chat_message(m["role"]).write(m["content"])
-            
-    if p := st.chat_input("Escribe tu duda pedagógica o pide ayuda a Pinter..."):
-        st.session_state.chat.append({"role":"user","content":p})
-        st.chat_message("user").write(p)
-        
-        prompt_pinter = f"Eres Pinter, un conejito muy simpático, mascota afectiva del aula, y maestro experto en Educación Infantil. Responde de forma cálida, animando al profesor y dando pautas pedagógicas excelentes a su petición: {p}"
-        r = model.generate_content(prompt_pinter).text
-        
-        st.session_state.chat.append({"role":"assistant","content":r})
-        st.chat_message("assistant", avatar="🐰").write(r)
+    if "chat" not in st.session_state: st.session_state.chat = []
+    for m in st.session_state.chat: st.chat_message(m["role"]).write(m["content"])
+    if p := st.chat_input("Duda..."):
+        st.session_state.chat.append({"role":"user","content":p}); st.chat_message("user").write(p)
+        r = model.generate_content(f"Eres maestra experta. {p}").text
+        st.session_state.chat.append({"role":"assistant","content":r}); st.chat_message("assistant").write(r)
         guardar_en_drive(usuario_actual, "Chat", p, r)
 
 # --- HISTORIAL PERSONAL ---
@@ -1969,6 +2033,9 @@ elif modo == "Ver MI Historial":
     usuario_formateado = st.session_state.usuario_actual if "usuario_actual" in st.session_state and st.session_state.usuario_actual else "Usuario"
     crear_encabezado(f"Biblioteca de {usuario_formateado}", 5)
     if st.button("Actualizar"): st.rerun()
+
+    if st.session_state.pop("aviso_registro_eliminado", False):
+        st.success("Registro eliminado de la biblioteca con éxito.")
 
     st.info("Aquí puedes revisar todas las actividades y cuentos que has generado y guardado previamente.")
     
@@ -1996,6 +2063,29 @@ elif modo == "Ver MI Historial":
                         st.markdown(f"**Lo que pediste:** {fila[3]}")
                         st.markdown("---")
                         st.markdown(f"**Resultado:**\n\n{fila[4]}")
+                        st.write("")
+                        col_esp, col_del = st.columns([0.7, 0.3])
+                        with col_del:
+                            if st.button("Eliminar Registro", key=f"btn_del_hist_{i}", use_container_width=True):
+                                st.session_state[f"confirmar_borrado_{i}"] = True
+                        
+                        if st.session_state.get(f"confirmar_borrado_{i}", False):
+                            st.warning("¿Deseas eliminar este registro de tu biblioteca de forma permanente?")
+                            c_si, c_no = st.columns(2)
+                            with c_si:
+                                if st.button("Confirmar eliminación", key=f"btn_si_del_{i}", type="primary", use_container_width=True):
+                                    with st.spinner("Eliminando registro..."):
+                                        exito = borrar_registro_historial(i, fecha=fila[0], usuario=nombre_en_excel, herramienta=fila[2])
+                                    if exito:
+                                        st.session_state.pop(f"confirmar_borrado_{i}", None)
+                                        st.session_state.aviso_registro_eliminado = True
+                                        st.rerun()
+                                    else:
+                                        st.error("No se pudo eliminar el registro. Inténtalo más tarde.")
+                            with c_no:
+                                if st.button("Cancelar", key=f"btn_no_del_{i}", use_container_width=True):
+                                    st.session_state.pop(f"confirmar_borrado_{i}", None)
+                                    st.rerun()
         
         if encontrados == 0:
             st.warning(f"Aún no hay ningún registro guardado para el nombre '{usuario_actual}'. ¡Anímate a generar y guardar algo con las herramientas!")
